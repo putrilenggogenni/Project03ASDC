@@ -12,16 +12,14 @@ class AStarSolver extends MazeSolver {
         pathSteps.clear();
 
         PriorityQueue<CellNode> pq = new PriorityQueue<>(Comparator.comparingInt(cn -> cn.fScore));
-        Map<Cell, Cell> parentMap = new HashMap<>();
         Map<Cell, Integer> gScore = new HashMap<>();
 
         Cell start = maze.getCell(0, 0);
 
         gScore.put(start, 0);
-        // NEW: Calculate heuristic to nearest finish point
         pq.offer(new CellNode(start, 0, heuristicToNearestGoal(start)));
-        parentMap.put(start, null);
 
+        // Complete full exploration - do NOT stop at goals
         while (!pq.isEmpty()) {
             CellNode current = pq.poll();
             Cell cell = current.cell;
@@ -31,20 +29,12 @@ class AStarSolver extends MazeSolver {
             cell.visited = true;
             pathSteps.add(cell);
 
-            // NEW: Check if any finish point is reached
-            if (isGoalReached(cell)) {
-                reconstructPath(parentMap, cell);
-                return true;
-            }
-
             for (Cell neighbor : maze.getNeighbors(cell)) {
                 if (!neighbor.visited) {
                     int tentativeG = gScore.get(cell) + neighbor.getCost();
 
                     if (!gScore.containsKey(neighbor) || tentativeG < gScore.get(neighbor)) {
                         gScore.put(neighbor, tentativeG);
-                        parentMap.put(neighbor, cell);
-                        // NEW: Calculate heuristic to nearest finish point
                         int h = heuristicToNearestGoal(neighbor);
                         pq.offer(new CellNode(neighbor, tentativeG, tentativeG + h));
                     }
@@ -52,10 +42,10 @@ class AStarSolver extends MazeSolver {
             }
         }
 
-        return false;
+        // Return true to indicate exploration completed
+        return true;
     }
 
-    // NEW: Calculate Manhattan distance to nearest goal
     private int heuristicToNearestGoal(Cell current) {
         int minDistance = Integer.MAX_VALUE;
         for (Cell goal : maze.getFinishCells()) {
