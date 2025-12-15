@@ -73,6 +73,46 @@ public class Main {
             controlPanel.add(resetButton);
             controlPanel.add(regenerateButton);
 
+            // NEW: Speed control panel
+            JPanel speedPanel = new JPanel();
+            speedPanel.setBackground(new Color(52, 73, 94));
+            speedPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 10));
+            speedPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
+
+            JLabel speedLabel = new JLabel("⚡ Animation Speed:");
+            speedLabel.setForeground(new Color(255, 235, 59));
+            speedLabel.setFont(new Font("Arial", Font.BOLD, 13));
+
+            JSlider speedSlider = new JSlider(JSlider.HORIZONTAL, 1, 10, 5);
+            speedSlider.setBackground(new Color(52, 73, 94));
+            speedSlider.setForeground(Color.WHITE);
+            speedSlider.setMajorTickSpacing(3);
+            speedSlider.setMinorTickSpacing(1);
+            speedSlider.setPaintTicks(true);
+            speedSlider.setPaintLabels(false);
+            speedSlider.setPreferredSize(new Dimension(200, 40));
+
+            JLabel speedValueLabel = new JLabel("Normal");
+            speedValueLabel.setForeground(Color.WHITE);
+            speedValueLabel.setFont(new Font("Arial", Font.BOLD, 12));
+            speedValueLabel.setPreferredSize(new Dimension(60, 20));
+
+            speedSlider.addChangeListener(e -> {
+                int value = speedSlider.getValue();
+                visualizer.setAnimationSpeed(value);
+                if (value <= 3) {
+                    speedValueLabel.setText("Slow");
+                } else if (value <= 7) {
+                    speedValueLabel.setText("Normal");
+                } else {
+                    speedValueLabel.setText("Fast");
+                }
+            });
+
+            speedPanel.add(speedLabel);
+            speedPanel.add(speedSlider);
+            speedPanel.add(speedValueLabel);
+
             // Create elegant legend panel
             JPanel legendPanel = new JPanel();
             legendPanel.setBackground(new Color(52, 73, 94));
@@ -95,19 +135,23 @@ public class Main {
             infoPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 8));
             infoPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 10, 20));
 
-            JLabel infoLabel = new JLabel("<html><center>💡 <b>Tip:</b> Dijkstra & A* minimize path cost by avoiding expensive terrain</center></html>");
+            JLabel infoLabel = new JLabel("<html><center>💡 <b>Tip:</b> Dijkstra & A* minimize path cost | 🎯 Reach any of the 3 finish points to win!</center></html>");
             infoLabel.setForeground(new Color(200, 200, 200));
             infoLabel.setFont(new Font("Arial", Font.PLAIN, 11));
             infoPanel.add(infoLabel);
 
             JPanel southPanel = new JPanel(new BorderLayout());
             southPanel.add(controlPanel, BorderLayout.NORTH);
-            southPanel.add(legendPanel, BorderLayout.CENTER);
-            southPanel.add(infoPanel, BorderLayout.SOUTH);
+            southPanel.add(speedPanel, BorderLayout.CENTER);
+            southPanel.add(legendPanel, BorderLayout.SOUTH);
+
+            JPanel bottomPanel = new JPanel(new BorderLayout());
+            bottomPanel.add(southPanel, BorderLayout.NORTH);
+            bottomPanel.add(infoPanel, BorderLayout.SOUTH);
 
             frame.setLayout(new BorderLayout());
             frame.add(visualizer, BorderLayout.CENTER);
-            frame.add(southPanel, BorderLayout.SOUTH);
+            frame.add(bottomPanel, BorderLayout.SOUTH);
 
             frame.pack();
             frame.setLocationRelativeTo(null);

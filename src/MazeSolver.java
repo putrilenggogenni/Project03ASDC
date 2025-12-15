@@ -28,4 +28,9 @@ abstract class MazeSolver {
             cell.inPath = true;
         }
     }
+
+    // NEW: Check if current cell is any finish point
+    protected boolean isGoalReached(Cell cell) {
+        return maze.isFinishPoint(cell);
+    }
 }

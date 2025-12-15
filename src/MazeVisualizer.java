@@ -11,6 +11,7 @@ class MazeVisualizer extends JPanel {
     private int totalCost;
     private int cellsExplored;
     private String currentAlgorithm;
+    private int animationSpeed = 5; // NEW: Speed control (1=slow, 10=fast)
     private static final int CELL_SIZE = 40;
     private static final int MARGIN = 30;
     private static final int WALL_THICKNESS = 3;
@@ -29,6 +30,20 @@ class MazeVisualizer extends JPanel {
         setBackground(new Color(245, 245, 250));
     }
 
+    // NEW: Set animation speed
+    public void setAnimationSpeed(int speed) {
+        this.animationSpeed = speed;
+        if (timer != null && timer.isRunning()) {
+            timer.setDelay(getDelayForSpeed(speed));
+        }
+    }
+
+    // NEW: Calculate delay based on speed (1-10 scale)
+    private int getDelayForSpeed(int speed) {
+        // Speed 1 = 200ms, Speed 5 = 40ms, Speed 10 = 5ms
+        return Math.max(5, 210 - speed * 20);
+    }
+
     public void animateSolution(List<Cell> steps, String algorithm) {
         this.animationSteps = steps;
         this.currentStep = 0;
@@ -39,7 +54,7 @@ class MazeVisualizer extends JPanel {
             timer.stop();
         }
 
-        timer = new Timer(40, e -> {
+        timer = new Timer(getDelayForSpeed(animationSpeed), e -> {
             if (currentStep < animationSteps.size()) {
                 currentStep++;
                 cellsExplored = currentStep;
@@ -183,10 +198,12 @@ class MazeVisualizer extends JPanel {
         drawMarker(g2d, MARGIN + CELL_SIZE/2, MARGIN + INFO_PANEL_HEIGHT + CELL_SIZE/2,
                 new Color(76, 175, 80), "START");
 
-        // Draw end marker with glow effect
-        int endX = MARGIN + (maze.getCols()-1) * CELL_SIZE + CELL_SIZE/2;
-        int endY = MARGIN + INFO_PANEL_HEIGHT + (maze.getRows()-1) * CELL_SIZE + CELL_SIZE/2;
-        drawMarker(g2d, endX, endY, new Color(244, 67, 54), "GOAL");
+        // NEW: Draw all three finish markers
+        for (Cell finish : maze.getFinishCells()) {
+            int endX = MARGIN + finish.col * CELL_SIZE + CELL_SIZE/2;
+            int endY = MARGIN + INFO_PANEL_HEIGHT + finish.row * CELL_SIZE + CELL_SIZE/2;
+            drawMarker(g2d, endX, endY, new Color(244, 67, 54), "GOAL");
+        }
     }
 
     private void drawInfoPanel(Graphics2D g2d) {

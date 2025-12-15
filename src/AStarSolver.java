@@ -16,10 +16,10 @@ class AStarSolver extends MazeSolver {
         Map<Cell, Integer> gScore = new HashMap<>();
 
         Cell start = maze.getCell(0, 0);
-        Cell end = maze.getCell(maze.getRows()-1, maze.getCols()-1);
 
         gScore.put(start, 0);
-        pq.offer(new CellNode(start, 0, heuristic(start, end)));
+        // NEW: Calculate heuristic to nearest finish point
+        pq.offer(new CellNode(start, 0, heuristicToNearestGoal(start)));
         parentMap.put(start, null);
 
         while (!pq.isEmpty()) {
@@ -31,8 +31,9 @@ class AStarSolver extends MazeSolver {
             cell.visited = true;
             pathSteps.add(cell);
 
-            if (cell == end) {
-                reconstructPath(parentMap, end);
+            // NEW: Check if any finish point is reached
+            if (isGoalReached(cell)) {
+                reconstructPath(parentMap, cell);
                 return true;
             }
 
@@ -43,7 +44,8 @@ class AStarSolver extends MazeSolver {
                     if (!gScore.containsKey(neighbor) || tentativeG < gScore.get(neighbor)) {
                         gScore.put(neighbor, tentativeG);
                         parentMap.put(neighbor, cell);
-                        int h = heuristic(neighbor, end);
+                        // NEW: Calculate heuristic to nearest finish point
+                        int h = heuristicToNearestGoal(neighbor);
                         pq.offer(new CellNode(neighbor, tentativeG, tentativeG + h));
                     }
                 }
@@ -53,9 +55,14 @@ class AStarSolver extends MazeSolver {
         return false;
     }
 
-    private int heuristic(Cell current, Cell goal) {
-        // Manhattan distance
-        return Math.abs(current.row - goal.row) + Math.abs(current.col - goal.col);
+    // NEW: Calculate Manhattan distance to nearest goal
+    private int heuristicToNearestGoal(Cell current) {
+        int minDistance = Integer.MAX_VALUE;
+        for (Cell goal : maze.getFinishCells()) {
+            int distance = Math.abs(current.row - goal.row) + Math.abs(current.col - goal.col);
+            minDistance = Math.min(minDistance, distance);
+        }
+        return minDistance;
     }
 
     private static class CellNode {

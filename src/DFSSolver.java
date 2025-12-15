@@ -15,7 +15,6 @@ class DFSSolver extends MazeSolver {
         Map<Cell, Cell> parentMap = new HashMap<>();
 
         Cell start = maze.getCell(0, 0);
-        Cell end = maze.getCell(maze.getRows()-1, maze.getCols()-1);
 
         stack.push(start);
         start.visited = true;
@@ -25,8 +24,9 @@ class DFSSolver extends MazeSolver {
         while (!stack.isEmpty()) {
             Cell current = stack.pop();
 
-            if (current == end) {
-                reconstructPath(parentMap, end);
+            // NEW: Check if any finish point is reached
+            if (isGoalReached(current)) {
+                reconstructPath(parentMap, current);
                 return true;
             }
 

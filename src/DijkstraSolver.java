@@ -16,7 +16,6 @@ class DijkstraSolver extends MazeSolver {
         Map<Cell, Integer> distanceMap = new HashMap<>();
 
         Cell start = maze.getCell(0, 0);
-        Cell end = maze.getCell(maze.getRows()-1, maze.getCols()-1);
 
         pq.offer(new CellDistance(start, 0));
         distanceMap.put(start, 0);
@@ -31,8 +30,9 @@ class DijkstraSolver extends MazeSolver {
             cell.visited = true;
             pathSteps.add(cell);
 
-            if (cell == end) {
-                reconstructPath(parentMap, end);
+            // NEW: Check if any finish point is reached
+            if (isGoalReached(cell)) {
+                reconstructPath(parentMap, cell);
                 return true;
             }
 

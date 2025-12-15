@@ -4,12 +4,14 @@ class MazeGraph {
     private Cell[][] grid;
     private int rows, cols;
     private Random random;
+    private List<Cell> finishCells; // NEW: Multiple finish points
 
     public MazeGraph(int rows, int cols) {
         this.rows = rows;
         this.cols = cols;
         this.grid = new Cell[rows][cols];
         this.random = new Random();
+        this.finishCells = new ArrayList<>();
         initializeGrid();
     }
 
@@ -51,11 +53,41 @@ class MazeGraph {
         grid[0][0].topWall = false;
         grid[rows-1][cols-1].bottomWall = false;
 
+        // NEW: Set up three finish points
+        setupFinishPoints();
+
         // Assign random terrain types
         assignRandomTerrain();
 
         // Reset visited for solving
         resetVisited();
+    }
+
+    // NEW: Set up three finish points
+    private void setupFinishPoints() {
+        finishCells.clear();
+
+        // Finish point 1: bottom-right corner (original)
+        finishCells.add(grid[rows-1][cols-1]);
+
+        // Finish point 2: bottom-left corner
+        finishCells.add(grid[rows-1][0]);
+        grid[rows-1][0].bottomWall = false;
+
+        // Finish point 3: middle-right edge
+        int midRow = rows / 2;
+        finishCells.add(grid[midRow][cols-1]);
+        grid[midRow][cols-1].rightWall = false;
+    }
+
+    // NEW: Check if a cell is any finish point
+    public boolean isFinishPoint(Cell cell) {
+        return finishCells.contains(cell);
+    }
+
+    // NEW: Get all finish points
+    public List<Cell> getFinishCells() {
+        return finishCells;
     }
 
     private void assignRandomTerrain() {
@@ -74,9 +106,11 @@ class MazeGraph {
                 }
             }
         }
-        // Keep start and end as default
+        // Keep start and all finish points as default
         grid[0][0].terrain = Cell.TerrainType.DEFAULT;
-        grid[rows-1][cols-1].terrain = Cell.TerrainType.DEFAULT;
+        for (Cell finish : finishCells) {
+            finish.terrain = Cell.TerrainType.DEFAULT;
+        }
     }
 
     private void addWallsToList(Cell cell, List<Wall> walls) {

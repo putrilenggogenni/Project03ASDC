@@ -15,7 +15,6 @@ class BFSSolver extends MazeSolver {
         Map<Cell, Cell> parentMap = new HashMap<>();
 
         Cell start = maze.getCell(0, 0);
-        Cell end = maze.getCell(maze.getRows()-1, maze.getCols()-1);
 
         queue.offer(start);
         start.visited = true;
@@ -25,8 +24,9 @@ class BFSSolver extends MazeSolver {
         while (!queue.isEmpty()) {
             Cell current = queue.poll();
 
-            if (current == end) {
-                reconstructPath(parentMap, end);
+            // NEW: Check if any finish point is reached
+            if (isGoalReached(current)) {
+                reconstructPath(parentMap, current);
                 return true;
             }
 
