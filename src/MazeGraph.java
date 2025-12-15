@@ -4,7 +4,7 @@ class MazeGraph {
     private Cell[][] grid;
     private int rows, cols;
     private Random random;
-    private List<Cell> finishCells; // NEW: Multiple finish points
+    private List<Cell> finishCells;
 
     public MazeGraph(int rows, int cols) {
         this.rows = rows;
@@ -49,12 +49,11 @@ class MazeGraph {
             }
         }
 
-        // Create entrance and exit
+        // Create entrance at start
         grid[0][0].topWall = false;
-        grid[rows-1][cols-1].bottomWall = false;
 
-        // NEW: Set up three finish points
-        setupFinishPoints();
+        // Setup three random finish points
+        setupRandomFinishPoints();
 
         // Assign random terrain types
         assignRandomTerrain();
@@ -63,29 +62,99 @@ class MazeGraph {
         resetVisited();
     }
 
-    // NEW: Set up three finish points
-    private void setupFinishPoints() {
+    // NEW: Randomly place three finish points at different locations
+    private void setupRandomFinishPoints() {
         finishCells.clear();
+        Set<String> usedPositions = new HashSet<>();
 
-        // Finish point 1: bottom-right corner (original)
-        finishCells.add(grid[rows-1][cols-1]);
+        // Start position is reserved
+        usedPositions.add("0,0");
 
-        // Finish point 2: bottom-left corner
-        finishCells.add(grid[rows-1][0]);
-        grid[rows-1][0].bottomWall = false;
+        // Find all reachable cells (cells that have at least one open wall)
+        List<Cell> candidates = new ArrayList<>();
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                Cell cell = grid[i][j];
+                // Exclude start position
+                if (i == 0 && j == 0) continue;
 
-        // Finish point 3: middle-right edge
-        int midRow = rows / 2;
-        finishCells.add(grid[midRow][cols-1]);
-        grid[midRow][cols-1].rightWall = false;
+                // Cell must have at least one open wall to be reachable
+                if (!cell.topWall || !cell.bottomWall || !cell.leftWall || !cell.rightWall) {
+                    candidates.add(cell);
+                }
+            }
+        }
+
+        // Shuffle candidates for randomness
+        Collections.shuffle(candidates, random);
+
+        // Prefer edge cells for finish points (easier to visualize)
+        List<Cell> edgeCandidates = new ArrayList<>();
+        List<Cell> innerCandidates = new ArrayList<>();
+
+        for (Cell candidate : candidates) {
+            if (candidate.row == 0 || candidate.row == rows - 1 ||
+                    candidate.col == 0 || candidate.col == cols - 1) {
+                edgeCandidates.add(candidate);
+            } else {
+                innerCandidates.add(candidate);
+            }
+        }
+
+        // Try to select from edge cells first, then inner cells if needed
+        List<Cell> selectionPool = new ArrayList<>(edgeCandidates);
+        selectionPool.addAll(innerCandidates);
+
+        // Select three distinct finish points
+        int finishCount = 0;
+        for (Cell candidate : selectionPool) {
+            if (finishCount >= 3) break;
+
+            String pos = candidate.row + "," + candidate.col;
+            if (!usedPositions.contains(pos)) {
+                finishCells.add(candidate);
+                usedPositions.add(pos);
+                finishCount++;
+
+                // Create exit opening for finish nodes at edges
+                if (candidate.row == 0) {
+                    candidate.topWall = false;
+                } else if (candidate.row == rows - 1) {
+                    candidate.bottomWall = false;
+                }
+                if (candidate.col == 0) {
+                    candidate.leftWall = false;
+                } else if (candidate.col == cols - 1) {
+                    candidate.rightWall = false;
+                }
+            }
+        }
+
+        // Fallback: if we couldn't find 3 distinct positions, force some positions
+        while (finishCells.size() < 3) {
+            int row = random.nextInt(rows);
+            int col = random.nextInt(cols);
+            String pos = row + "," + col;
+
+            if (!usedPositions.contains(pos)) {
+                Cell cell = grid[row][col];
+                finishCells.add(cell);
+                usedPositions.add(pos);
+
+                // Create exit
+                if (row == rows - 1) {
+                    cell.bottomWall = false;
+                } else if (col == cols - 1) {
+                    cell.rightWall = false;
+                }
+            }
+        }
     }
 
-    // NEW: Check if a cell is any finish point
     public boolean isFinishPoint(Cell cell) {
         return finishCells.contains(cell);
     }
 
-    // NEW: Get all finish points
     public List<Cell> getFinishCells() {
         return finishCells;
     }
