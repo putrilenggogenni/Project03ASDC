@@ -8,26 +8,47 @@ public class Main {
             JFrame frame = new JFrame("Maze Solver - Pathfinding Algorithms Visualization");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-            // Create maze
-            MazeGraph maze = new MazeGraph(15, 15);
+            // Create maze with adjusted size for screen fit
+            MazeGraph maze = new MazeGraph(12, 12);
             maze.generateMazeWithPrim();
 
             // Create visualizer
             MazeVisualizer visualizer = new MazeVisualizer(maze);
 
-            // Create modern control panel
-            JPanel controlPanel = new JPanel();
-            controlPanel.setBackground(new Color(52, 73, 94));
-            controlPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 15));
-            controlPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+            // Create right side control panel
+            JPanel rightPanel = new JPanel();
+            rightPanel.setBackground(new Color(52, 73, 94));
+            rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+            rightPanel.setPreferredSize(new Dimension(280, 0));
+            rightPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-            // Create styled buttons
-            JButton bfsButton = createStyledButton("BFS", new Color(108, 92, 231));
-            JButton dfsButton = createStyledButton("DFS", new Color(162, 155, 254));
-            JButton dijkstraButton = createStyledButton("Dijkstra", new Color(46, 213, 115));
-            JButton astarButton = createStyledButton("A* Algorithm", new Color(72, 219, 251));
-            JButton resetButton = createStyledButton("Reset", new Color(255, 152, 0));
-            JButton regenerateButton = createStyledButton("New Maze", new Color(255, 71, 87));
+            // Title panel
+            JPanel titlePanel = new JPanel();
+            titlePanel.setBackground(new Color(52, 73, 94));
+            titlePanel.setMaximumSize(new Dimension(280, 60));
+            JLabel titleLabel = new JLabel("<html><center>⚙️ Control Panel</center></html>");
+            titleLabel.setForeground(new Color(255, 235, 59));
+            titleLabel.setFont(new Font("Arial", Font.BOLD, 18));
+            titlePanel.add(titleLabel);
+
+            // Algorithm selection panel
+            JPanel algoPanel = new JPanel();
+            algoPanel.setBackground(new Color(52, 73, 94));
+            algoPanel.setLayout(new BoxLayout(algoPanel, BoxLayout.Y_AXIS));
+            algoPanel.setBorder(BorderFactory.createTitledBorder(
+                    BorderFactory.createLineBorder(new Color(255, 255, 255, 100), 2),
+                    "Algorithm Selection",
+                    0,
+                    0,
+                    new Font("Arial", Font.BOLD, 14),
+                    Color.WHITE
+            ));
+            algoPanel.setMaximumSize(new Dimension(280, 240));
+
+            JButton bfsButton = createControlButton("BFS", new Color(108, 92, 231));
+            JButton dfsButton = createControlButton("DFS", new Color(162, 155, 254));
+            JButton dijkstraButton = createControlButton("Dijkstra", new Color(46, 213, 115));
+            JButton astarButton = createControlButton("A* Algorithm", new Color(72, 219, 251));
 
             bfsButton.addActionListener(e -> {
                 BFSSolver solver = new BFSSolver(maze);
@@ -57,6 +78,79 @@ public class Main {
                 }
             });
 
+            algoPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            algoPanel.add(bfsButton);
+            algoPanel.add(Box.createRigidArea(new Dimension(0, 8)));
+            algoPanel.add(dfsButton);
+            algoPanel.add(Box.createRigidArea(new Dimension(0, 8)));
+            algoPanel.add(dijkstraButton);
+            algoPanel.add(Box.createRigidArea(new Dimension(0, 8)));
+            algoPanel.add(astarButton);
+            algoPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+
+            // Speed control panel
+            JPanel speedPanel = new JPanel();
+            speedPanel.setBackground(new Color(52, 73, 94));
+            speedPanel.setLayout(new BoxLayout(speedPanel, BoxLayout.Y_AXIS));
+            speedPanel.setBorder(BorderFactory.createTitledBorder(
+                    BorderFactory.createLineBorder(new Color(255, 255, 255, 100), 2),
+                    "Animation Speed",
+                    0,
+                    0,
+                    new Font("Arial", Font.BOLD, 14),
+                    Color.WHITE
+            ));
+            speedPanel.setMaximumSize(new Dimension(280, 120));
+
+            JLabel speedLabel = new JLabel("Speed: Normal");
+            speedLabel.setForeground(Color.WHITE);
+            speedLabel.setFont(new Font("Arial", Font.BOLD, 13));
+            speedLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+            JSlider speedSlider = new JSlider(JSlider.HORIZONTAL, 1, 10, 5);
+            speedSlider.setBackground(new Color(52, 73, 94));
+            speedSlider.setForeground(Color.WHITE);
+            speedSlider.setMajorTickSpacing(3);
+            speedSlider.setMinorTickSpacing(1);
+            speedSlider.setPaintTicks(true);
+            speedSlider.setPaintLabels(false);
+            speedSlider.setMaximumSize(new Dimension(240, 50));
+
+            speedSlider.addChangeListener(e -> {
+                int value = speedSlider.getValue();
+                visualizer.setAnimationSpeed(value);
+                if (value <= 3) {
+                    speedLabel.setText("Speed: Slow");
+                } else if (value <= 7) {
+                    speedLabel.setText("Speed: Normal");
+                } else {
+                    speedLabel.setText("Speed: Fast");
+                }
+            });
+
+            speedPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            speedPanel.add(speedLabel);
+            speedPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            speedPanel.add(speedSlider);
+            speedPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+
+            // Action buttons panel
+            JPanel actionPanel = new JPanel();
+            actionPanel.setBackground(new Color(52, 73, 94));
+            actionPanel.setLayout(new BoxLayout(actionPanel, BoxLayout.Y_AXIS));
+            actionPanel.setBorder(BorderFactory.createTitledBorder(
+                    BorderFactory.createLineBorder(new Color(255, 255, 255, 100), 2),
+                    "Actions",
+                    0,
+                    0,
+                    new Font("Arial", Font.BOLD, 14),
+                    Color.WHITE
+            ));
+            actionPanel.setMaximumSize(new Dimension(280, 140));
+
+            JButton resetButton = createControlButton("Reset", new Color(255, 152, 0));
+            JButton regenerateButton = createControlButton("New Maze", new Color(255, 71, 87));
+
             resetButton.addActionListener(e -> {
                 visualizer.reset();
             });
@@ -66,92 +160,67 @@ public class Main {
                 visualizer.reset();
             });
 
-            controlPanel.add(bfsButton);
-            controlPanel.add(dfsButton);
-            controlPanel.add(dijkstraButton);
-            controlPanel.add(astarButton);
-            controlPanel.add(resetButton);
-            controlPanel.add(regenerateButton);
+            actionPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            actionPanel.add(resetButton);
+            actionPanel.add(Box.createRigidArea(new Dimension(0, 8)));
+            actionPanel.add(regenerateButton);
+            actionPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
-            // NEW: Speed control panel
-            JPanel speedPanel = new JPanel();
-            speedPanel.setBackground(new Color(52, 73, 94));
-            speedPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 10));
-            speedPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
-
-            JLabel speedLabel = new JLabel("⚡ Animation Speed:");
-            speedLabel.setForeground(new Color(255, 235, 59));
-            speedLabel.setFont(new Font("Arial", Font.BOLD, 13));
-
-            JSlider speedSlider = new JSlider(JSlider.HORIZONTAL, 1, 10, 5);
-            speedSlider.setBackground(new Color(52, 73, 94));
-            speedSlider.setForeground(Color.WHITE);
-            speedSlider.setMajorTickSpacing(3);
-            speedSlider.setMinorTickSpacing(1);
-            speedSlider.setPaintTicks(true);
-            speedSlider.setPaintLabels(false);
-            speedSlider.setPreferredSize(new Dimension(200, 40));
-
-            JLabel speedValueLabel = new JLabel("Normal");
-            speedValueLabel.setForeground(Color.WHITE);
-            speedValueLabel.setFont(new Font("Arial", Font.BOLD, 12));
-            speedValueLabel.setPreferredSize(new Dimension(60, 20));
-
-            speedSlider.addChangeListener(e -> {
-                int value = speedSlider.getValue();
-                visualizer.setAnimationSpeed(value);
-                if (value <= 3) {
-                    speedValueLabel.setText("Slow");
-                } else if (value <= 7) {
-                    speedValueLabel.setText("Normal");
-                } else {
-                    speedValueLabel.setText("Fast");
-                }
-            });
-
-            speedPanel.add(speedLabel);
-            speedPanel.add(speedSlider);
-            speedPanel.add(speedValueLabel);
-
-            // Create elegant legend panel
+            // Legend panel
             JPanel legendPanel = new JPanel();
             legendPanel.setBackground(new Color(52, 73, 94));
-            legendPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 10));
-            legendPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 15, 20));
+            legendPanel.setLayout(new BoxLayout(legendPanel, BoxLayout.Y_AXIS));
+            legendPanel.setBorder(BorderFactory.createTitledBorder(
+                    BorderFactory.createLineBorder(new Color(255, 255, 255, 100), 2),
+                    "Terrain Cost",
+                    0,
+                    0,
+                    new Font("Arial", Font.BOLD, 14),
+                    Color.WHITE
+            ));
+            legendPanel.setMaximumSize(new Dimension(280, 200));
 
-            JLabel legendTitle = new JLabel("⚡ Terrain Cost:");
-            legendTitle.setForeground(new Color(255, 235, 59));
-            legendTitle.setFont(new Font("Arial", Font.BOLD, 14));
-            legendPanel.add(legendTitle);
-
+            legendPanel.add(Box.createRigidArea(new Dimension(0, 10)));
             legendPanel.add(createLegendItem("Default (0)", Cell.TerrainType.DEFAULT.color));
+            legendPanel.add(Box.createRigidArea(new Dimension(0, 8)));
             legendPanel.add(createLegendItem("Grass (1)", Cell.TerrainType.GRASS.color));
+            legendPanel.add(Box.createRigidArea(new Dimension(0, 8)));
             legendPanel.add(createLegendItem("Mud (5)", Cell.TerrainType.MUD.color));
+            legendPanel.add(Box.createRigidArea(new Dimension(0, 8)));
             legendPanel.add(createLegendItem("Water (10)", Cell.TerrainType.WATER.color));
+            legendPanel.add(Box.createRigidArea(new Dimension(0, 10)));
 
-            // Add algorithm info panel
+            // Info panel
             JPanel infoPanel = new JPanel();
             infoPanel.setBackground(new Color(52, 73, 94));
-            infoPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 8));
-            infoPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 10, 20));
+            infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+            infoPanel.setMaximumSize(new Dimension(280, 100));
 
-            JLabel infoLabel = new JLabel("<html><center>💡 <b>Tip:</b> Dijkstra & A* minimize path cost | 🎯 Reach any of the 3 finish points to win!</center></html>");
+            JLabel infoLabel = new JLabel("<html><center>💡 Routes to all 3 goals<br>are shown in different colors</center></html>");
             infoLabel.setForeground(new Color(200, 200, 200));
             infoLabel.setFont(new Font("Arial", Font.PLAIN, 11));
+            infoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+            infoPanel.add(Box.createRigidArea(new Dimension(0, 20)));
             infoPanel.add(infoLabel);
 
-            JPanel southPanel = new JPanel(new BorderLayout());
-            southPanel.add(controlPanel, BorderLayout.NORTH);
-            southPanel.add(speedPanel, BorderLayout.CENTER);
-            southPanel.add(legendPanel, BorderLayout.SOUTH);
+            // Assemble right panel
+            rightPanel.add(titlePanel);
+            rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            rightPanel.add(algoPanel);
+            rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            rightPanel.add(speedPanel);
+            rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            rightPanel.add(actionPanel);
+            rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            rightPanel.add(legendPanel);
+            rightPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            rightPanel.add(infoPanel);
+            rightPanel.add(Box.createVerticalGlue());
 
-            JPanel bottomPanel = new JPanel(new BorderLayout());
-            bottomPanel.add(southPanel, BorderLayout.NORTH);
-            bottomPanel.add(infoPanel, BorderLayout.SOUTH);
-
+            // Main layout: maze on left, controls on right
             frame.setLayout(new BorderLayout());
             frame.add(visualizer, BorderLayout.CENTER);
-            frame.add(bottomPanel, BorderLayout.SOUTH);
+            frame.add(rightPanel, BorderLayout.EAST);
 
             frame.pack();
             frame.setLocationRelativeTo(null);
@@ -159,29 +228,23 @@ public class Main {
         });
     }
 
-    private static JButton createStyledButton(String text, Color color) {
+    private static JButton createControlButton(String text, Color color) {
         JButton button = new JButton(text);
         button.setBackground(color);
         button.setForeground(Color.WHITE);
         button.setFont(new Font("Arial", Font.BOLD, 12));
         button.setFocusPainted(false);
         button.setBorderPainted(false);
-        button.setPreferredSize(new Dimension(130, 40));
+        button.setMaximumSize(new Dimension(240, 40));
+        button.setAlignmentX(Component.CENTER_ALIGNMENT);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
-        // Enhanced hover effect with scale
         button.addMouseListener(new MouseAdapter() {
             public void mouseEntered(MouseEvent e) {
                 button.setBackground(color.brighter());
-                button.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(Color.WHITE, 2),
-                        BorderFactory.createEmptyBorder(8, 18, 8, 18)
-                ));
             }
             public void mouseExited(MouseEvent e) {
                 button.setBackground(color);
-                button.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
             }
         });
 
@@ -189,11 +252,12 @@ public class Main {
     }
 
     private static JPanel createLegendItem(String text, Color color) {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         panel.setBackground(new Color(52, 73, 94));
+        panel.setMaximumSize(new Dimension(240, 30));
 
         JPanel colorBox = new JPanel();
-        colorBox.setPreferredSize(new Dimension(28, 28));
+        colorBox.setPreferredSize(new Dimension(24, 24));
         colorBox.setBackground(color);
         colorBox.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(255, 255, 255, 180), 2),
@@ -202,7 +266,7 @@ public class Main {
 
         JLabel label = new JLabel(text);
         label.setForeground(Color.WHITE);
-        label.setFont(new Font("Arial", Font.BOLD, 12));
+        label.setFont(new Font("Arial", Font.BOLD, 11));
 
         panel.add(colorBox);
         panel.add(label);
