@@ -3,6 +3,8 @@ import java.awt.*;
 import java.awt.event.*;
 
 public class Main {
+    private static String currentTheme = "neon"; // neon, ocean, forest, sunset
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             // Initialize sound manager
@@ -68,12 +70,71 @@ public class Main {
         JFrame frame = new JFrame("PathQuest - Algorithmic Maze Solver");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
+        // Difficulty selector dialog
+        String[] difficulties = {"Small (10x10)", "Medium (15x15)", "Large (20x20)", "Extreme (25x25)"};
+        String selected = (String) JOptionPane.showInputDialog(
+                null,
+                "Select Maze Difficulty:",
+                "PathQuest - Difficulty Selection",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                difficulties,
+                difficulties[1]
+        );
+
+        int mazeSize = 15; // default
+        if (selected != null) {
+            if (selected.contains("10x10")) mazeSize = 10;
+            else if (selected.contains("15x15")) mazeSize = 15;
+            else if (selected.contains("20x20")) mazeSize = 20;
+            else if (selected.contains("25x25")) mazeSize = 25;
+        }
+
         // Create maze
-        MazeGraph maze = new MazeGraph(15, 15);
+        final MazeGraph maze = new MazeGraph(mazeSize, mazeSize);
         maze.generateMazeWithPrim();
 
         // Create visualizer
-        MazeVisualizer visualizer = new MazeVisualizer(maze);
+        final MazeVisualizer visualizer = new MazeVisualizer(maze);
+
+        // Stats panel for score system
+        JPanel statsPanel = new JPanel(new GridLayout(1, 4, 10, 0));
+        statsPanel.setBackground(new Color(52, 73, 94));
+        statsPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+
+        final JLabel cellsExploredLabel = createStatLabel("Cells Explored: 0");
+        final JLabel timeElapsedLabel = createStatLabel("Time: 0.0s");
+        final JLabel efficiencyLabel = createStatLabel("Efficiency: 0%");
+        final JLabel bestPathLabel = createStatLabel("Best Cost: ---");
+
+        statsPanel.add(cellsExploredLabel);
+        statsPanel.add(timeElapsedLabel);
+        statsPanel.add(efficiencyLabel);
+        statsPanel.add(bestPathLabel);
+
+        // Make mazeSize final for lambda
+        final int finalMazeSize = mazeSize;
+
+        // Add stats updater to visualizer
+        Timer statsTimer = new Timer(100, e -> {
+            if (visualizer.isAnimating()) {
+                int explored = visualizer.getCurrentStep();
+                cellsExploredLabel.setText("Cells Explored: " + explored);
+
+                double timeElapsed = visualizer.getElapsedTime() / 1000.0;
+                timeElapsedLabel.setText(String.format("Time: %.1fs", timeElapsed));
+
+                if (visualizer.isComplete()) {
+                    int totalCells = finalMazeSize * finalMazeSize;
+                    int efficiency = (int)((1.0 - (double)explored / totalCells) * 100);
+                    efficiencyLabel.setText("Efficiency: " + Math.max(0, efficiency) + "%");
+
+                    int bestCost = visualizer.getBestPathCost();
+                    bestPathLabel.setText("Best Cost: " + bestCost);
+                }
+            }
+        });
+        statsTimer.start();
 
         // Create modern control panel
         JPanel controlPanel = new JPanel();
@@ -119,11 +180,19 @@ public class Main {
 
         resetButton.addActionListener(e -> {
             visualizer.reset();
+            cellsExploredLabel.setText("Cells Explored: 0");
+            timeElapsedLabel.setText("Time: 0.0s");
+            efficiencyLabel.setText("Efficiency: 0%");
+            bestPathLabel.setText("Best Cost: ---");
         });
 
         regenerateButton.addActionListener(e -> {
             maze.generateMazeWithPrim();
             visualizer.reset();
+            cellsExploredLabel.setText("Cells Explored: 0");
+            timeElapsedLabel.setText("Time: 0.0s");
+            efficiencyLabel.setText("Efficiency: 0%");
+            bestPathLabel.setText("Best Cost: ---");
         });
 
         controlPanel.add(bfsButton);
@@ -132,6 +201,24 @@ public class Main {
         controlPanel.add(astarButton);
         controlPanel.add(resetButton);
         controlPanel.add(regenerateButton);
+
+        // Playback control panel (NEW!)
+        JPanel playbackPanel = new JPanel();
+        playbackPanel.setBackground(new Color(52, 73, 94));
+        playbackPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        playbackPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
+
+        JButton pauseButton = createSmallButton("⏸ Pause", new Color(255, 193, 7));
+        JButton playButton = createSmallButton("▶ Play", new Color(76, 175, 80));
+        JButton stepButton = createSmallButton("⏭ Step", new Color(3, 169, 244));
+
+        pauseButton.addActionListener(e -> visualizer.pause());
+        playButton.addActionListener(e -> visualizer.play());
+        stepButton.addActionListener(e -> visualizer.step());
+
+        playbackPanel.add(pauseButton);
+        playbackPanel.add(playButton);
+        playbackPanel.add(stepButton);
 
         // Speed control panel
         JPanel speedPanel = new JPanel();
@@ -173,6 +260,32 @@ public class Main {
         speedPanel.add(speedSlider);
         speedPanel.add(speedValueLabel);
 
+        // Theme selector (NEW!)
+        JPanel themePanel = new JPanel();
+        themePanel.setBackground(new Color(52, 73, 94));
+        themePanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 5));
+        themePanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
+
+        JLabel themeLabel = new JLabel("🎨 Theme:");
+        themeLabel.setForeground(new Color(255, 235, 59));
+        themeLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+
+        JButton neonTheme = createSmallButton("Neon", new Color(147, 51, 234));
+        JButton oceanTheme = createSmallButton("Ocean", new Color(14, 165, 233));
+        JButton forestTheme = createSmallButton("Forest", new Color(34, 197, 94));
+        JButton sunsetTheme = createSmallButton("Sunset", new Color(249, 115, 22));
+
+        neonTheme.addActionListener(e -> visualizer.setTheme("neon"));
+        oceanTheme.addActionListener(e -> visualizer.setTheme("ocean"));
+        forestTheme.addActionListener(e -> visualizer.setTheme("forest"));
+        sunsetTheme.addActionListener(e -> visualizer.setTheme("sunset"));
+
+        themePanel.add(themeLabel);
+        themePanel.add(neonTheme);
+        themePanel.add(oceanTheme);
+        themePanel.add(forestTheme);
+        themePanel.add(sunsetTheme);
+
         // Create elegant legend panel
         JPanel legendPanel = new JPanel();
         legendPanel.setBackground(new Color(52, 73, 94));
@@ -201,12 +314,22 @@ public class Main {
         infoPanel.add(infoLabel);
 
         JPanel southPanel = new JPanel(new BorderLayout());
-        southPanel.add(controlPanel, BorderLayout.NORTH);
-        southPanel.add(speedPanel, BorderLayout.CENTER);
-        southPanel.add(legendPanel, BorderLayout.SOUTH);
+        southPanel.add(statsPanel, BorderLayout.NORTH);
+
+        JPanel controlsContainer = new JPanel(new BorderLayout());
+        controlsContainer.add(controlPanel, BorderLayout.NORTH);
+        controlsContainer.add(playbackPanel, BorderLayout.CENTER);
+
+        JPanel speedThemeContainer = new JPanel(new BorderLayout());
+        speedThemeContainer.add(speedPanel, BorderLayout.NORTH);
+        speedThemeContainer.add(themePanel, BorderLayout.CENTER);
+
+        southPanel.add(controlsContainer, BorderLayout.CENTER);
+        southPanel.add(speedThemeContainer, BorderLayout.SOUTH);
 
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.add(southPanel, BorderLayout.NORTH);
+        bottomPanel.add(legendPanel, BorderLayout.CENTER);
         bottomPanel.add(infoPanel, BorderLayout.SOUTH);
 
         // Wrap visualizer in scroll pane to handle overflow
@@ -228,5 +351,36 @@ public class Main {
         frame.setSize(maxWidth, maxHeight);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
+    }
+
+    private static JLabel createStatLabel(String text) {
+        JLabel label = new JLabel(text);
+        label.setForeground(new Color(129, 212, 250));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        label.setHorizontalAlignment(SwingConstants.CENTER);
+        return label;
+    }
+
+    private static JButton createSmallButton(String text, Color color) {
+        JButton button = new JButton(text);
+        button.setBackground(color);
+        button.setForeground(Color.WHITE);
+        button.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        button.setFocusPainted(false);
+        button.setBorderPainted(false);
+        button.setPreferredSize(new Dimension(90, 30));
+        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        button.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
+
+        button.addMouseListener(new MouseAdapter() {
+            public void mouseEntered(MouseEvent e) {
+                button.setBackground(color.brighter());
+            }
+            public void mouseExited(MouseEvent e) {
+                button.setBackground(color);
+            }
+        });
+
+        return button;
     }
 }
