@@ -14,6 +14,8 @@ class DijkstraSolver extends MazeSolver {
         PriorityQueue<CellDistance> pq = new PriorityQueue<>(Comparator.comparingInt(cd -> cd.distance));
         Map<Cell, Cell> parentMap = new HashMap<>();
         Map<Cell, Integer> distanceMap = new HashMap<>();
+        Set<Cell> goalsFound = new HashSet<>();
+        List<Cell> allFinishCells = maze.getFinishCells();
 
         Cell start = maze.getCell(0, 0);
 
@@ -21,7 +23,8 @@ class DijkstraSolver extends MazeSolver {
         distanceMap.put(start, 0);
         parentMap.put(start, null);
 
-        while (!pq.isEmpty()) {
+        // Continue until all goals are found or queue is empty
+        while (!pq.isEmpty() && goalsFound.size() < allFinishCells.size()) {
             CellDistance current = pq.poll();
             Cell cell = current.cell;
 
@@ -30,10 +33,10 @@ class DijkstraSolver extends MazeSolver {
             cell.visited = true;
             pathSteps.add(cell);
 
-            // NEW: Check if any finish point is reached
+            // Check if this is a goal
             if (isGoalReached(cell)) {
-                reconstructPath(parentMap, cell);
-                return true;
+                goalsFound.add(cell);
+                // Don't stop - continue to find all goals
             }
 
             for (Cell neighbor : maze.getNeighbors(cell)) {
@@ -47,6 +50,12 @@ class DijkstraSolver extends MazeSolver {
                     }
                 }
             }
+        }
+
+        // Reconstruct paths to all goals found
+        if (!goalsFound.isEmpty()) {
+            reconstructAllPaths(parentMap);
+            return true;
         }
 
         return false;
