@@ -5,6 +5,10 @@ import java.awt.event.*;
 public class Main {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
+            // Initialize sound manager
+            SoundManager soundManager = SoundManager.getInstance();
+            soundManager.loadSounds();
+
             // Show opening screen first
             OpeningScreen openingScreen = new OpeningScreen();
             openingScreen.setVisible(true);

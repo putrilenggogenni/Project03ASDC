@@ -22,6 +22,8 @@ public class OpeningScreen extends JFrame {
         add(panel);
 
         startFadeInAnimation();
+        // Di constructor OpeningScreen setelah komponen dibuat
+        SoundManager.getInstance().playOpeningMusic();
     }
 
     private void startFadeInAnimation() {
@@ -68,10 +70,43 @@ public class OpeningScreen extends JFrame {
                 dispose();
                 Main.createGameWindow();
             });
+            startButton.addActionListener(e -> {
+                // Play click sound
+                SoundManager.getInstance().playClick();
+
+                // Fade out opening music
+                SoundManager.getInstance().fadeOut(500);
+
+                // Stop animation
+                if (animationTimer != null) {
+                    animationTimer.stop();
+                }
+
+                // Delay untuk fade out, lalu main gameplay music
+                Timer transitionTimer = new Timer(600, event -> {
+                    SoundManager.getInstance().playGameplayMusic();
+                });
+                transitionTimer.setRepeats(false);
+                transitionTimer.start();
+
+                dispose();
+                Main.createGameWindow();
+            });
 
             exitButton = new JButton("EXIT");
             styleButton(exitButton, new Color(239, 68, 68), 300, 520);
             exitButton.addActionListener(e -> System.exit(0));
+
+            exitButton.addActionListener(e -> {
+                SoundManager.getInstance().playClick();
+                SoundManager.getInstance().fadeOut(300);
+
+                Timer exitTimer = new Timer(400, event -> {
+                    System.exit(0);
+                });
+                exitTimer.setRepeats(false);
+                exitTimer.start();
+            });
 
             add(startButton);
             add(exitButton);
