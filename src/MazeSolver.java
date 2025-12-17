@@ -15,7 +15,20 @@ abstract class MazeSolver {
         return pathSteps;
     }
 
+    // Modified to find paths to ALL finish points
+    protected void reconstructAllPaths(Map<Cell, Cell> parentMap) {
+        List<Cell> allFinishCells = maze.getFinishCells();
+
+        for (Cell finish : allFinishCells) {
+            reconstructPath(parentMap, finish);
+        }
+    }
+
     protected void reconstructPath(Map<Cell, Cell> parentMap, Cell end) {
+        if (!parentMap.containsKey(end)) {
+            return; // Path not found to this goal
+        }
+
         List<Cell> path = new ArrayList<>();
         Cell current = end;
 
@@ -29,7 +42,6 @@ abstract class MazeSolver {
         }
     }
 
-    // NEW: Check if current cell is any finish point
     protected boolean isGoalReached(Cell cell) {
         return maze.isFinishPoint(cell);
     }

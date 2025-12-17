@@ -13,6 +13,8 @@ class BFSSolver extends MazeSolver {
 
         Queue<Cell> queue = new LinkedList<>();
         Map<Cell, Cell> parentMap = new HashMap<>();
+        Set<Cell> goalsFound = new HashSet<>();
+        List<Cell> allFinishCells = maze.getFinishCells();
 
         Cell start = maze.getCell(0, 0);
 
@@ -21,13 +23,14 @@ class BFSSolver extends MazeSolver {
         pathSteps.add(start);
         parentMap.put(start, null);
 
-        while (!queue.isEmpty()) {
+        // Continue until all goals are found or queue is empty
+        while (!queue.isEmpty() && goalsFound.size() < allFinishCells.size()) {
             Cell current = queue.poll();
 
-            // NEW: Check if any finish point is reached
+            // Check if this is a goal
             if (isGoalReached(current)) {
-                reconstructPath(parentMap, current);
-                return true;
+                goalsFound.add(current);
+                // Don't stop - continue to find all goals
             }
 
             for (Cell neighbor : maze.getNeighbors(current)) {
@@ -38,6 +41,12 @@ class BFSSolver extends MazeSolver {
                     pathSteps.add(neighbor);
                 }
             }
+        }
+
+        // Reconstruct paths to all goals found
+        if (!goalsFound.isEmpty()) {
+            reconstructAllPaths(parentMap);
+            return true;
         }
 
         return false;
