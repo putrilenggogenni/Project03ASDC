@@ -64,6 +64,11 @@ class MazeVisualizer extends JPanel {
         if (timer != null && timer.isRunning()) {
             timer.setDelay(getDelayForSpeed(speed));
         }
+        // Adjust particle animation speed too
+        if (particleTimer != null) {
+            int particleDelay = Math.max(10, 50 - speed * 4);
+            particleTimer.setDelay(particleDelay);
+        }
     }
 
     private int getDelayForSpeed(int speed) {
