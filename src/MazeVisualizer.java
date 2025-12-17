@@ -13,7 +13,6 @@ class MazeVisualizer extends JPanel {
     private String currentAlgorithm;
     private int animationSpeed = 5;
 
-    // Multi-path visualization data
     private Map<Cell, Integer> pathColors;
     private List<List<Cell>> allPaths;
     private int[] pathCosts;
@@ -21,10 +20,9 @@ class MazeVisualizer extends JPanel {
     private int pathAnimationStep = 0;
     private List<Cell> currentPathAnimation;
 
-    // Path colors
-    private static final Color PATH_COLOR_1 = new Color(255, 105, 180); // Pink
-    private static final Color PATH_COLOR_2 = new Color(64, 156, 255); // Blue
-    private static final Color PATH_COLOR_3 = new Color(46, 213, 115); // Green
+    private static final Color PATH_COLOR_1 = new Color(255, 105, 180);
+    private static final Color PATH_COLOR_2 = new Color(64, 156, 255);
+    private static final Color PATH_COLOR_3 = new Color(46, 213, 115);
 
     private static final int CELL_SIZE = 45;
     private static final int MARGIN = 30;
@@ -71,13 +69,11 @@ class MazeVisualizer extends JPanel {
             timer.stop();
         }
 
-        // Phase 1: Exploration animation
         timer = new Timer(getDelayForSpeed(animationSpeed), e -> {
             if (currentStep < explorationSteps.size()) {
                 currentStep++;
                 repaint();
             } else {
-                // Exploration complete - now reconstruct paths
                 timer.stop();
                 explorationComplete = true;
                 reconstructAllPathsPostExploration();
@@ -87,7 +83,6 @@ class MazeVisualizer extends JPanel {
         timer.start();
     }
 
-    // Post-exploration: Find shortest path to each finish node
     private void reconstructAllPathsPostExploration() {
         List<Cell> finishCells = maze.getFinishCells();
 
@@ -96,7 +91,6 @@ class MazeVisualizer extends JPanel {
             List<Cell> path = findShortestPathToGoal(finish);
             allPaths.add(path);
 
-            // Calculate cost
             int cost = 0;
             for (Cell cell : path) {
                 cost += cell.getCost();
@@ -105,8 +99,6 @@ class MazeVisualizer extends JPanel {
         }
     }
 
-    // Use BFS to find shortest path from start to specific goal
-    // This runs AFTER exploration, using the maze structure to find the actual shortest path
     private List<Cell> findShortestPathToGoal(Cell goal) {
         Queue<Cell> queue = new LinkedList<>();
         Map<Cell, Cell> parent = new HashMap<>();
@@ -126,7 +118,6 @@ class MazeVisualizer extends JPanel {
                 break;
             }
 
-            // Use maze neighbors (respects walls) - this is the actual shortest path
             for (Cell neighbor : maze.getNeighbors(current)) {
                 if (!visited.contains(neighbor)) {
                     visited.add(neighbor);
@@ -136,7 +127,6 @@ class MazeVisualizer extends JPanel {
             }
         }
 
-        // Reconstruct path
         List<Cell> path = new ArrayList<>();
         if (found) {
             Cell current = goal;
@@ -149,18 +139,14 @@ class MazeVisualizer extends JPanel {
         return path;
     }
 
-    // Phase 2: Animate the paths step-by-step
     private void animatePaths() {
-        // Merge all paths into one animation sequence
         currentPathAnimation.clear();
 
-        // Interleave paths for simultaneous animation
         int maxPathLength = 0;
         for (List<Cell> path : allPaths) {
             maxPathLength = Math.max(maxPathLength, path.size());
         }
 
-        // Build animation sequence
         for (int step = 0; step < maxPathLength; step++) {
             for (int pathIndex = 0; pathIndex < allPaths.size(); pathIndex++) {
                 List<Cell> path = allPaths.get(pathIndex);
@@ -214,7 +200,6 @@ class MazeVisualizer extends JPanel {
 
         drawInfoPanel(g2d);
 
-        // Draw cells
         for (int i = 0; i < maze.getRows(); i++) {
             for (int j = 0; j < maze.getCols(); j++) {
                 Cell cell = maze.getCell(i, j);
@@ -225,7 +210,6 @@ class MazeVisualizer extends JPanel {
                         x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4, 10, 10
                 );
 
-                // Determine cell color
                 boolean isInAnimatedPath = false;
                 int cellPathIndex = -1;
 
@@ -238,7 +222,6 @@ class MazeVisualizer extends JPanel {
                 }
 
                 if (isInAnimatedPath) {
-                    // Draw path with color
                     Color pathColor;
                     switch (cellPathIndex) {
                         case 0: pathColor = PATH_COLOR_1; break;
@@ -257,7 +240,6 @@ class MazeVisualizer extends JPanel {
                     g2d.setColor(new Color(255, 255, 255, 120));
                     g2d.fillOval(x + 8, y + 8, 6, 6);
                 } else if (explorationSteps != null && currentStep > 0 && !explorationComplete) {
-                    // Exploration phase
                     int index = explorationSteps.indexOf(cell);
                     if (index >= 0 && index < currentStep) {
                         float progress = (float) index / currentStep;
@@ -283,23 +265,20 @@ class MazeVisualizer extends JPanel {
                     g2d.fill(cellRect);
                 }
 
-                // Draw cost number
                 if (cell.terrain != Cell.TerrainType.DEFAULT && !isInAnimatedPath) {
                     g2d.setColor(new Color(0, 0, 0, 80));
-                    g2d.setFont(new Font("Arial", Font.BOLD, 11));
+                    g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
                     String costStr = String.valueOf(cell.getCost());
                     FontMetrics fm = g2d.getFontMetrics();
                     int textWidth = fm.stringWidth(costStr);
                     g2d.drawString(costStr, x + (CELL_SIZE - textWidth) / 2, y + CELL_SIZE / 2 + 4);
                 }
 
-                // Shadow
                 if (!isInAnimatedPath) {
                     g2d.setColor(new Color(0, 0, 0, 20));
                     g2d.drawRoundRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4, 10, 10);
                 }
 
-                // Draw walls
                 g2d.setColor(new Color(52, 73, 94));
                 g2d.setStroke(new BasicStroke(WALL_THICKNESS, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
@@ -310,11 +289,9 @@ class MazeVisualizer extends JPanel {
             }
         }
 
-        // Draw start marker
         drawMarker(g2d, MARGIN + CELL_SIZE/2, MARGIN + INFO_PANEL_HEIGHT + CELL_SIZE/2,
                 new Color(76, 175, 80), "START");
 
-        // Draw finish markers
         List<Cell> finishCells = maze.getFinishCells();
         Color[] finishColors = {PATH_COLOR_1, PATH_COLOR_2, PATH_COLOR_3};
 
@@ -336,18 +313,15 @@ class MazeVisualizer extends JPanel {
 
         g2d.setColor(Color.WHITE);
 
-        // Algorithm name
         if (!currentAlgorithm.isEmpty()) {
-            g2d.setFont(new Font("Arial", Font.BOLD, 18));
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 18));
             g2d.drawString("Algorithm: " + currentAlgorithm, 30, 40);
         }
 
-        // Stats
-        g2d.setFont(new Font("Arial", Font.BOLD, 13));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
         int yPos = 65;
 
         if (explorationComplete && pathAnimationStep > 0) {
-            // Show path costs
             g2d.setColor(PATH_COLOR_1);
             g2d.drawString("G1: " + pathCosts[0], 30, yPos);
 
@@ -357,7 +331,6 @@ class MazeVisualizer extends JPanel {
             g2d.setColor(PATH_COLOR_3);
             g2d.drawString("G3: " + pathCosts[2], 210, yPos);
         } else if (!explorationComplete && explorationSteps != null) {
-            // Show exploration progress
             g2d.setColor(new Color(129, 212, 250));
             g2d.drawString("Exploring: " + currentStep + " cells", 30, yPos);
         } else {
@@ -365,25 +338,24 @@ class MazeVisualizer extends JPanel {
             g2d.drawString("Path Costs: ---", 30, yPos);
         }
 
-        // Status indicator
         if (explorationSteps != null) {
             if (pathAnimationStep >= currentPathAnimation.size() && explorationComplete) {
                 g2d.setColor(new Color(76, 175, 80));
                 g2d.fillOval(getWidth() - 100, 25, 15, 15);
                 g2d.setColor(Color.WHITE);
-                g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                 g2d.drawString("Complete", getWidth() - 80, 37);
             } else if (explorationComplete) {
                 g2d.setColor(new Color(255, 193, 7));
                 g2d.fillOval(getWidth() - 100, 25, 15, 15);
                 g2d.setColor(Color.WHITE);
-                g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                 g2d.drawString("Drawing Paths", getWidth() - 80, 37);
             } else {
                 g2d.setColor(new Color(255, 193, 7));
                 g2d.fillOval(getWidth() - 100, 25, 15, 15);
                 g2d.setColor(Color.WHITE);
-                g2d.setFont(new Font("Arial", Font.PLAIN, 12));
+                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                 g2d.drawString("Exploring", getWidth() - 80, 37);
             }
         }
@@ -393,7 +365,6 @@ class MazeVisualizer extends JPanel {
         long time = System.currentTimeMillis();
         float pulse = (float)(Math.sin(time / 300.0) * 0.2 + 1.0);
 
-        // Outer glow
         for (int i = 4; i > 0; i--) {
             int alpha = (int)(25 * i * pulse);
             g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
@@ -401,7 +372,6 @@ class MazeVisualizer extends JPanel {
             g2d.fillOval(x - size/2, y - size/2, size, size);
         }
 
-        // Main circle
         int mainSize = (int)(28 * pulse);
         GradientPaint gradient = new GradientPaint(
                 x - mainSize/2, y - mainSize/2, color.brighter(),
@@ -410,13 +380,11 @@ class MazeVisualizer extends JPanel {
         g2d.setPaint(gradient);
         g2d.fillOval(x - mainSize/2, y - mainSize/2, mainSize, mainSize);
 
-        // Border
         g2d.setColor(Color.WHITE);
         g2d.setStroke(new BasicStroke(2.5f));
         g2d.drawOval(x - mainSize/2, y - mainSize/2, mainSize, mainSize);
 
-        // Label
-        g2d.setFont(new Font("Arial", Font.BOLD, 9));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 9));
         FontMetrics fm = g2d.getFontMetrics();
         int labelWidth = fm.stringWidth(label);
 
