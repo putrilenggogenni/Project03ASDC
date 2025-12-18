@@ -55,7 +55,9 @@ class AStarSolver extends MazeSolver {
 
         // Reconstruct paths to all goals found
         if (!goalsFound.isEmpty()) {
-            reconstructAllPaths(parentMap);
+            for (Cell goal : goalsFound) {
+                reconstructPath(parentMap, goal);
+            }
             return true;
         }
 
