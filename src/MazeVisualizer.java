@@ -24,8 +24,8 @@ class MazeVisualizer extends JPanel {
     private static final Color PATH_COLOR_2 = new Color(64, 156, 255);
     private static final Color PATH_COLOR_3 = new Color(46, 213, 115);
 
-    private static final int CELL_SIZE = 45;
-    private static final int MARGIN = 30;
+    private static final int CELL_SIZE = 38;
+    private static final int MARGIN = 15;
     private static final int WALL_THICKNESS = 3;
     private static final int INFO_PANEL_HEIGHT = 100;
 

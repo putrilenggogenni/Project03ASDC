@@ -205,11 +205,23 @@ public class Main {
         bottomPanel.add(southPanel, BorderLayout.NORTH);
         bottomPanel.add(infoPanel, BorderLayout.SOUTH);
 
+        // Wrap visualizer in scroll pane to handle overflow
+        JScrollPane scrollPane = new JScrollPane(visualizer);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
+
         frame.setLayout(new BorderLayout());
-        frame.add(visualizer, BorderLayout.CENTER);
+        frame.add(scrollPane, BorderLayout.CENTER);
         frame.add(bottomPanel, BorderLayout.SOUTH);
 
         frame.pack();
+        // Ensure window isn't too large for screen
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int maxWidth = Math.min(frame.getWidth(), (int)(screenSize.width * 0.9));
+        int maxHeight = Math.min(frame.getHeight(), (int)(screenSize.height * 0.9));
+        frame.setSize(maxWidth, maxHeight);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
