@@ -13,29 +13,18 @@ class MazeVisualizer extends JPanel {
     private String currentAlgorithm;
     private int animationSpeed = 5;
 
-    private Map<Cell, Integer> pathColors;
-    private List<List<Cell>> allPaths;
-    private int[] pathCosts;
-    private boolean explorationComplete = false;
+    // Post-exploration path reconstruction
+    private List<List<Cell>> allGoalPaths;
     private int pathAnimationStep = 0;
-    private List<Cell> currentPathAnimation;
+    private boolean explorationComplete = false;
 
-    // Particle system for visual effects
     private List<Particle> particles = new ArrayList<>();
     private Random random = new Random();
     private Timer particleTimer;
-
-    // Glow effects
     private Map<Cell, Float> cellGlow = new HashMap<>();
     private long animationStartTime;
-
-    // NEW: Playback control
     private boolean isPaused = false;
-
-    // NEW: Trail effects
     private List<TrailPoint> trails = new ArrayList<>();
-
-    // NEW: Theme colors
     private String currentTheme = "neon";
     private Color themeColor1, themeColor2, themeColor3, themeBg;
 
@@ -46,25 +35,19 @@ class MazeVisualizer extends JPanel {
     private static final int CELL_SIZE = 38;
     private static final int MARGIN = 15;
     private static final int WALL_THICKNESS = 3;
-    private static final int INFO_PANEL_HEIGHT = 100;
+    private static final int INFO_PANEL_HEIGHT = 90;
 
     public MazeVisualizer(MazeGraph maze) {
         this.maze = maze;
         this.currentStep = 0;
         this.currentAlgorithm = "";
-        this.pathColors = new HashMap<>();
-        this.allPaths = new ArrayList<>();
-        this.pathCosts = new int[3];
+        this.allGoalPaths = new ArrayList<>();
         setPreferredSize(new Dimension(
                 maze.getCols() * CELL_SIZE + 2 * MARGIN,
                 maze.getRows() * CELL_SIZE + 2 * MARGIN + INFO_PANEL_HEIGHT
         ));
-        setBackground(new Color(20, 20, 35));
-
-        // Initialize theme
         updateThemeColors();
 
-        // Start particle animation timer
         particleTimer = new Timer(30, e -> {
             updateParticles();
             updateTrails();
@@ -73,7 +56,6 @@ class MazeVisualizer extends JPanel {
         particleTimer.start();
     }
 
-    // NEW: Theme system
     public void setTheme(String theme) {
         this.currentTheme = theme;
         updateThemeColors();
@@ -100,7 +82,7 @@ class MazeVisualizer extends JPanel {
                 themeColor3 = new Color(253, 186, 116);
                 themeBg = new Color(30, 20, 25);
                 break;
-            default: // neon
+            default:
                 themeColor1 = new Color(147, 51, 234);
                 themeColor2 = new Color(168, 85, 247);
                 themeColor3 = new Color(192, 132, 252);
@@ -110,12 +92,9 @@ class MazeVisualizer extends JPanel {
         setBackground(themeBg);
     }
 
-    // NEW: Playback controls
     public void pause() {
         isPaused = true;
-        if (timer != null) {
-            timer.stop();
-        }
+        if (timer != null) timer.stop();
     }
 
     public void play() {
@@ -129,20 +108,27 @@ class MazeVisualizer extends JPanel {
         if (explorationSteps != null && currentStep < explorationSteps.size()) {
             Cell cell = explorationSteps.get(currentStep);
             cellGlow.put(cell, 1.0f);
-            addExplosionParticles(cell, new Color(103, 58, 183));
+            addExplosionParticles(cell, themeColor2);
             addTrail(cell);
             currentStep++;
             repaint();
         }
     }
 
-    // NEW: Stats getters
     public boolean isAnimating() {
         return explorationSteps != null && currentStep > 0;
     }
 
     public boolean isComplete() {
-        return explorationComplete && pathAnimationStep >= currentPathAnimation.size();
+        return explorationComplete && pathAnimationStep >= getTotalPathSteps();
+    }
+
+    private int getTotalPathSteps() {
+        int total = 0;
+        for (List<Cell> path : allGoalPaths) {
+            total += path.size();
+        }
+        return total;
     }
 
     public int getCurrentStep() {
@@ -155,12 +141,15 @@ class MazeVisualizer extends JPanel {
     }
 
     public int getBestPathCost() {
-        if (pathCosts.length == 0) return 0;
-        int min = Integer.MAX_VALUE;
-        for (int cost : pathCosts) {
-            if (cost > 0 && cost < min) min = cost;
+        int minCost = Integer.MAX_VALUE;
+        for (List<Cell> path : allGoalPaths) {
+            int cost = 0;
+            for (Cell cell : path) {
+                cost += cell.getCost();
+            }
+            if (cost > 0 && cost < minCost) minCost = cost;
         }
-        return min == Integer.MAX_VALUE ? 0 : min;
+        return minCost == Integer.MAX_VALUE ? 0 : minCost;
     }
 
     public void setAnimationSpeed(int speed) {
@@ -168,10 +157,8 @@ class MazeVisualizer extends JPanel {
         if (timer != null && timer.isRunning()) {
             timer.setDelay(getDelayForSpeed(speed));
         }
-        // Adjust particle animation speed too
         if (particleTimer != null) {
-            int particleDelay = Math.max(10, 50 - speed * 4);
-            particleTimer.setDelay(particleDelay);
+            particleTimer.setDelay(Math.max(10, 50 - speed * 4));
         }
     }
 
@@ -183,57 +170,50 @@ class MazeVisualizer extends JPanel {
         this.explorationSteps = steps;
         this.currentStep = 0;
         this.currentAlgorithm = algorithm;
-        this.pathColors.clear();
-        this.allPaths.clear();
+        this.allGoalPaths.clear();
         this.explorationComplete = false;
         this.pathAnimationStep = 0;
-        this.currentPathAnimation = new ArrayList<>();
         this.cellGlow.clear();
         this.particles.clear();
-        Arrays.fill(pathCosts, 0);
+        this.trails.clear();
         this.animationStartTime = System.currentTimeMillis();
 
-        if (timer != null) {
-            timer.stop();
-        }
+        if (timer != null) timer.stop();
 
+        // Phase 1: Exploration animation
         timer = new Timer(getDelayForSpeed(animationSpeed), e -> {
             if (!isPaused && currentStep < explorationSteps.size()) {
                 Cell cell = explorationSteps.get(currentStep);
                 cellGlow.put(cell, 1.0f);
-                // Add particles when exploring cells
                 addExplosionParticles(cell, themeColor2);
-                // Add trail effect
                 addTrail(cell);
                 currentStep++;
                 repaint();
             } else if (currentStep >= explorationSteps.size()) {
                 timer.stop();
                 explorationComplete = true;
-                reconstructAllPathsPostExploration();
-                animatePaths();
+                // Phase 2: Post-exploration shortest path determination
+                reconstructShortestPathsToAllGoals();
+                animateAllPaths();
             }
         });
         timer.start();
     }
 
-    private void reconstructAllPathsPostExploration() {
+    // NEW: Post-exploration shortest path reconstruction
+    private void reconstructShortestPathsToAllGoals() {
+        allGoalPaths.clear();
         List<Cell> finishCells = maze.getFinishCells();
 
-        for (int i = 0; i < finishCells.size(); i++) {
-            Cell finish = finishCells.get(i);
-            List<Cell> path = findShortestPathToGoal(finish);
-            allPaths.add(path);
-
-            int cost = 0;
-            for (Cell cell : path) {
-                cost += cell.getCost();
+        for (Cell goal : finishCells) {
+            List<Cell> path = findShortestPathBFS(goal);
+            if (path != null && !path.isEmpty()) {
+                allGoalPaths.add(path);
             }
-            pathCosts[i] = cost;
         }
     }
 
-    private List<Cell> findShortestPathToGoal(Cell goal) {
+    private List<Cell> findShortestPathBFS(Cell goal) {
         Queue<Cell> queue = new LinkedList<>();
         Map<Cell, Cell> parent = new HashMap<>();
         Set<Cell> visited = new HashSet<>();
@@ -243,13 +223,18 @@ class MazeVisualizer extends JPanel {
         visited.add(start);
         parent.put(start, null);
 
-        boolean found = false;
-        while (!queue.isEmpty() && !found) {
+        while (!queue.isEmpty()) {
             Cell current = queue.poll();
 
             if (current == goal) {
-                found = true;
-                break;
+                // Reconstruct path
+                List<Cell> path = new ArrayList<>();
+                Cell c = goal;
+                while (c != null) {
+                    path.add(0, c);
+                    c = parent.get(c);
+                }
+                return path;
             }
 
             for (Cell neighbor : maze.getNeighbors(current)) {
@@ -261,70 +246,48 @@ class MazeVisualizer extends JPanel {
             }
         }
 
-        List<Cell> path = new ArrayList<>();
-        if (found) {
-            Cell current = goal;
-            while (current != null) {
-                path.add(0, current);
-                current = parent.get(current);
-            }
-        }
-
-        return path;
+        return new ArrayList<>();
     }
 
-    private void animatePaths() {
-        currentPathAnimation.clear();
-
-        int maxPathLength = 0;
-        for (List<Cell> path : allPaths) {
-            maxPathLength = Math.max(maxPathLength, path.size());
-        }
-
-        for (int step = 0; step < maxPathLength; step++) {
-            for (int pathIndex = 0; pathIndex < allPaths.size(); pathIndex++) {
-                List<Cell> path = allPaths.get(pathIndex);
-                if (step < path.size()) {
-                    Cell cell = path.get(step);
-                    if (!pathColors.containsKey(cell)) {
-                        pathColors.put(cell, pathIndex);
-                        currentPathAnimation.add(cell);
-                    }
-                }
-            }
-        }
-
+    // Phase 3: Animate all paths step-by-step
+    private void animateAllPaths() {
         pathAnimationStep = 0;
 
         timer = new Timer(getDelayForSpeed(animationSpeed) * 2, e -> {
-            if (pathAnimationStep < currentPathAnimation.size()) {
-                Cell cell = currentPathAnimation.get(pathAnimationStep);
-                int pathIndex = pathColors.get(cell);
-                Color pathColor = getPathColor(pathIndex);
-                addExplosionParticles(cell, pathColor);
+            if (pathAnimationStep < getTotalPathSteps()) {
+                // Animate one step across all paths
+                int stepCount = 0;
+                for (int i = 0; i < allGoalPaths.size(); i++) {
+                    List<Cell> path = allGoalPaths.get(i);
+                    int localStep = pathAnimationStep - stepCount;
+
+                    if (localStep >= 0 && localStep < path.size()) {
+                        Cell cell = path.get(localStep);
+                        Color pathColor = getPathColor(i);
+                        addExplosionParticles(cell, pathColor);
+                    }
+                    stepCount += path.size();
+                }
+
                 pathAnimationStep++;
                 repaint();
             } else {
                 timer.stop();
-                // Add celebration particles at finish points
+                // Celebration
                 for (Cell finish : maze.getFinishCells()) {
                     addCelebrationParticles(finish);
                 }
+                SoundManager.getInstance().playSuccess();
             }
         });
         timer.start();
     }
 
     private Color getPathColor(int pathIndex) {
-        switch (pathIndex) {
-            case 0: return PATH_COLOR_1;
-            case 1: return PATH_COLOR_2;
-            case 2: return PATH_COLOR_3;
-            default: return new Color(255, 193, 7);
-        }
+        Color[] colors = {PATH_COLOR_1, PATH_COLOR_2, PATH_COLOR_3};
+        return colors[pathIndex % 3];
     }
 
-    // Particle system methods
     private void addExplosionParticles(Cell cell, Color color) {
         int x = MARGIN + cell.col * CELL_SIZE + CELL_SIZE / 2;
         int y = MARGIN + INFO_PANEL_HEIGHT + cell.row * CELL_SIZE + CELL_SIZE / 2;
@@ -336,7 +299,6 @@ class MazeVisualizer extends JPanel {
         }
     }
 
-    // NEW: Trail system
     private void addTrail(Cell cell) {
         int x = MARGIN + cell.col * CELL_SIZE + CELL_SIZE / 2;
         int y = MARGIN + INFO_PANEL_HEIGHT + cell.row * CELL_SIZE + CELL_SIZE / 2;
@@ -344,14 +306,7 @@ class MazeVisualizer extends JPanel {
     }
 
     private void updateTrails() {
-        Iterator<TrailPoint> iterator = trails.iterator();
-        while (iterator.hasNext()) {
-            TrailPoint trail = iterator.next();
-            trail.update();
-            if (trail.isDead()) {
-                iterator.remove();
-            }
-        }
+        trails.removeIf(t -> { t.update(); return t.isDead(); });
     }
 
     private void addCelebrationParticles(Cell cell) {
@@ -371,43 +326,28 @@ class MazeVisualizer extends JPanel {
     }
 
     private void updateParticles() {
-        // Update glow effects
-        for (Map.Entry<Cell, Float> entry : new HashMap<>(cellGlow).entrySet()) {
+        cellGlow.entrySet().removeIf(entry -> {
             float glow = entry.getValue() - 0.05f;
-            if (glow <= 0) {
-                cellGlow.remove(entry.getKey());
-            } else {
-                cellGlow.put(entry.getKey(), glow);
-            }
-        }
+            if (glow <= 0) return true;
+            entry.setValue(glow);
+            return false;
+        });
 
-        // Update particles
-        Iterator<Particle> iterator = particles.iterator();
-        while (iterator.hasNext()) {
-            Particle p = iterator.next();
-            p.update();
-            if (p.isDead()) {
-                iterator.remove();
-            }
-        }
+        particles.removeIf(p -> { p.update(); return p.isDead(); });
     }
 
     public void reset() {
-        if (timer != null) {
-            timer.stop();
-        }
+        if (timer != null) timer.stop();
         maze.resetVisited();
         explorationSteps = null;
         currentStep = 0;
         currentAlgorithm = "";
-        pathColors.clear();
-        allPaths.clear();
-        Arrays.fill(pathCosts, 0);
+        allGoalPaths.clear();
         explorationComplete = false;
         pathAnimationStep = 0;
-        currentPathAnimation.clear();
         cellGlow.clear();
         particles.clear();
+        trails.clear();
         repaint();
     }
 
@@ -417,13 +357,61 @@ class MazeVisualizer extends JPanel {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         drawInfoPanel(g2d);
         drawMaze(g2d);
+        drawPaths(g2d);
         drawTrails(g2d);
         drawParticles(g2d);
         drawMarkers(g2d);
+    }
+
+    private void drawPaths(Graphics2D g2d) {
+        if (!explorationComplete || allGoalPaths.isEmpty()) return;
+
+        int cumulativeStep = 0;
+        for (int pathIndex = 0; pathIndex < allGoalPaths.size(); pathIndex++) {
+            List<Cell> path = allGoalPaths.get(pathIndex);
+            Color pathColor = getPathColor(pathIndex);
+
+            int visibleSteps = Math.min(path.size(), Math.max(0, pathAnimationStep - cumulativeStep));
+
+            // Draw path line
+            g2d.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            for (int i = 0; i < visibleSteps - 1; i++) {
+                Cell c1 = path.get(i);
+                Cell c2 = path.get(i + 1);
+                int x1 = MARGIN + c1.col * CELL_SIZE + CELL_SIZE / 2;
+                int y1 = MARGIN + INFO_PANEL_HEIGHT + c1.row * CELL_SIZE + CELL_SIZE / 2;
+                int x2 = MARGIN + c2.col * CELL_SIZE + CELL_SIZE / 2;
+                int y2 = MARGIN + INFO_PANEL_HEIGHT + c2.row * CELL_SIZE + CELL_SIZE / 2;
+
+                g2d.setColor(new Color(0, 0, 0, 50));
+                g2d.drawLine(x1 + 2, y1 + 2, x2 + 2, y2 + 2);
+                g2d.setColor(pathColor);
+                g2d.drawLine(x1, y1, x2, y2);
+            }
+
+            // Draw node markers
+            for (int i = 1; i < visibleSteps; i++) {
+                Cell cell = path.get(i);
+                int x = MARGIN + cell.col * CELL_SIZE + CELL_SIZE / 2;
+                int y = MARGIN + INFO_PANEL_HEIGHT + cell.row * CELL_SIZE + CELL_SIZE / 2;
+
+                g2d.setColor(pathColor);
+                g2d.fillOval(x - 6, y - 6, 12, 12);
+                g2d.setColor(Color.WHITE);
+                g2d.setStroke(new BasicStroke(2));
+                g2d.drawOval(x - 6, y - 6, 12, 12);
+
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 8));
+                String num = String.valueOf(i);
+                FontMetrics fm = g2d.getFontMetrics();
+                g2d.drawString(num, x - fm.stringWidth(num)/2, y + 3);
+            }
+
+            cumulativeStep += path.size();
+        }
     }
 
     private void drawTrails(Graphics2D g2d) {
@@ -445,159 +433,71 @@ class MazeVisualizer extends JPanel {
                         x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4, 10, 10
                 );
 
-                boolean isInAnimatedPath = false;
-                int cellPathIndex = -1;
-
-                if (explorationComplete && pathColors.containsKey(cell)) {
-                    int animIndex = currentPathAnimation.indexOf(cell);
-                    if (animIndex >= 0 && animIndex < pathAnimationStep) {
-                        isInAnimatedPath = true;
-                        cellPathIndex = pathColors.get(cell);
+                // Check if in any animated path
+                boolean inPath = false;
+                if (explorationComplete) {
+                    int stepCount = 0;
+                    for (List<Cell> path : allGoalPaths) {
+                        int localStep = pathAnimationStep - stepCount;
+                        if (localStep > 0 && localStep < path.size() && path.subList(0, localStep).contains(cell)) {
+                            inPath = true;
+                            break;
+                        }
+                        stepCount += path.size();
                     }
                 }
 
-                if (isInAnimatedPath) {
-                    Color pathColor = getPathColor(cellPathIndex);
-
-                    // Animated gradient for path
-                    float progress = (float)((currentTime / 1000.0) % 2.0) / 2.0f;
-                    Color color1 = pathColor;
-                    Color color2 = new Color(
-                            Math.min(255, pathColor.getRed() + 40),
-                            Math.min(255, pathColor.getGreen() + 40),
-                            Math.min(255, pathColor.getBlue() + 40)
-                    );
-
-                    GradientPaint gradient = new GradientPaint(
-                            x + CELL_SIZE * progress, y, color1,
-                            x + CELL_SIZE * (1 - progress), y + CELL_SIZE, color2
-                    );
-                    g2d.setPaint(gradient);
-                    g2d.fill(cellRect);
-
-                    // Sparkle effect
-                    int sparkleCount = 3;
-                    for (int s = 0; s < sparkleCount; s++) {
-                        float sparklePhase = (float)((currentTime + s * 300) % 1500) / 1500.0f;
-                        int alpha = (int)(255 * Math.sin(sparklePhase * Math.PI));
-                        g2d.setColor(new Color(255, 255, 255, alpha));
-                        int sx = x + 10 + (s * 10);
-                        int sy = y + 10 + (int)(Math.sin(sparklePhase * Math.PI * 2) * 5);
-                        g2d.fillOval(sx, sy, 4, 4);
-                    }
-
-                    // Glowing border
-                    g2d.setColor(new Color(255, 255, 255, 100));
-                    g2d.setStroke(new BasicStroke(2));
-                    g2d.draw(cellRect);
-
-                } else if (explorationSteps != null && currentStep > 0 && !explorationComplete) {
+                if (!inPath && explorationSteps != null && currentStep > 0 && !explorationComplete) {
                     int index = explorationSteps.indexOf(cell);
                     if (index >= 0 && index < currentStep) {
                         float progress = (float) index / currentStep;
                         int baseAlpha = (int)(150 + 105 * progress);
-
-                        // Pulse effect
                         float pulse = (float)(Math.sin((currentTime - animationStartTime) / 200.0 + index * 0.1) * 0.3 + 0.7);
                         int alpha = (int)(baseAlpha * pulse);
 
-                        Color exploredColor = new Color(103, 58, 183, Math.min(255, alpha));
-                        g2d.setColor(exploredColor);
+                        g2d.setColor(new Color(103, 58, 183, Math.min(255, alpha)));
                         g2d.fill(cellRect);
 
-                        // Glow effect for recently explored cells
                         if (cellGlow.containsKey(cell)) {
                             float glow = cellGlow.get(cell);
-                            int glowAlpha = (int)(glow * 180);
-                            g2d.setColor(new Color(200, 150, 255, glowAlpha));
+                            g2d.setColor(new Color(200, 150, 255, (int)(glow * 180)));
                             g2d.setStroke(new BasicStroke(3));
-                            g2d.draw(new RoundRectangle2D.Double(
-                                    x, y, CELL_SIZE, CELL_SIZE, 12, 12
-                            ));
-                        }
-
-                        // Wave ripple for recent exploration
-                        if (currentStep - index < 8) {
-                            float rippleProgress = (currentStep - index) / 8.0f;
-                            int rippleAlpha = (int)(80 * (1 - rippleProgress));
-                            g2d.setColor(new Color(103, 58, 183, rippleAlpha));
-                            int rippleSize = (int)(CELL_SIZE * (1 + rippleProgress * 0.3));
-                            int offset = (rippleSize - CELL_SIZE) / 2;
-                            g2d.setStroke(new BasicStroke(2));
-                            g2d.draw(new RoundRectangle2D.Double(
-                                    x - offset, y - offset, rippleSize, rippleSize, 12, 12
-                            ));
+                            g2d.draw(new RoundRectangle2D.Double(x, y, CELL_SIZE, CELL_SIZE, 12, 12));
                         }
                     } else {
-                        // Animated terrain background
-                        drawAnimatedTerrain(g2d, cell, x, y, cellRect, currentTime);
+                        drawTerrainCell(g2d, cell, x, y, cellRect, currentTime);
                     }
                 } else {
-                    // Animated terrain background
-                    drawAnimatedTerrain(g2d, cell, x, y, cellRect, currentTime);
+                    drawTerrainCell(g2d, cell, x, y, cellRect, currentTime);
                 }
 
-                // Cost display with glow
-                if (cell.terrain != Cell.TerrainType.DEFAULT && !isInAnimatedPath) {
-                    // Glow effect on cost number
-                    g2d.setColor(new Color(255, 255, 255, 40));
-                    g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
+                // Cost display
+                if (cell.terrain != Cell.TerrainType.DEFAULT && !inPath) {
+                    g2d.setColor(new Color(0, 0, 0, 180));
+                    g2d.setFont(new Font("Segoe UI", Font.BOLD, 9));
                     String costStr = String.valueOf(cell.getCost());
                     FontMetrics fm = g2d.getFontMetrics();
-                    int textWidth = fm.stringWidth(costStr);
-                    int textX = x + (CELL_SIZE - textWidth) / 2;
-                    int textY = y + CELL_SIZE / 2 + 5;
-
-                    for (int dx = -1; dx <= 1; dx++) {
-                        for (int dy = -1; dy <= 1; dy++) {
-                            g2d.drawString(costStr, textX + dx, textY + dy);
-                        }
-                    }
-
-                    g2d.setColor(new Color(0, 0, 0, 180));
-                    g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
-                    g2d.drawString(costStr, textX, textY);
+                    g2d.drawString(costStr, x + (CELL_SIZE - fm.stringWidth(costStr)) / 2, y + CELL_SIZE / 2 + 3);
                 }
 
-                // Subtle cell border
-                if (!isInAnimatedPath) {
-                    g2d.setColor(new Color(255, 255, 255, 15));
-                    g2d.drawRoundRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4, 10, 10);
-                }
-
-                // Draw walls with glow
                 drawWalls(g2d, cell, x, y);
             }
         }
     }
 
-    private void drawAnimatedTerrain(Graphics2D g2d, Cell cell, int x, int y, RoundRectangle2D cellRect, long currentTime) {
+    private void drawTerrainCell(Graphics2D g2d, Cell cell, int x, int y, RoundRectangle2D cellRect, long time) {
         Color baseColor = cell.terrain.color;
-
-        // Subtle color animation
-        float colorPulse = (float)(Math.sin(currentTime / 1000.0 + (cell.row + cell.col) * 0.3) * 0.1 + 0.9);
-        Color animatedColor = new Color(
-                (int)(baseColor.getRed() * colorPulse),
-                (int)(baseColor.getGreen() * colorPulse),
-                (int)(baseColor.getBlue() * colorPulse)
+        float pulse = (float)(Math.sin(time / 1000.0 + (cell.row + cell.col) * 0.3) * 0.1 + 0.9);
+        Color animated = new Color(
+                (int)(baseColor.getRed() * pulse),
+                (int)(baseColor.getGreen() * pulse),
+                (int)(baseColor.getBlue() * pulse)
         );
-
-        g2d.setColor(animatedColor);
+        g2d.setColor(animated);
         g2d.fill(cellRect);
-
-        // Add subtle texture overlay
-        if (cell.terrain != Cell.TerrainType.DEFAULT) {
-            g2d.setColor(new Color(255, 255, 255, 10));
-            for (int i = 0; i < 3; i++) {
-                int tx = x + 5 + i * 10 + (int)(Math.sin(currentTime / 500.0 + i) * 2);
-                int ty = y + 5 + i * 10;
-                g2d.fillOval(tx, ty, 3, 3);
-            }
-        }
     }
 
     private void drawWalls(Graphics2D g2d, Cell cell, int x, int y) {
-        // Glowing walls
         g2d.setColor(new Color(100, 200, 255, 40));
         g2d.setStroke(new BasicStroke(WALL_THICKNESS + 2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
@@ -606,7 +506,6 @@ class MazeVisualizer extends JPanel {
         if (cell.bottomWall) g2d.drawLine(x, y + CELL_SIZE, x + CELL_SIZE, y + CELL_SIZE);
         if (cell.leftWall) g2d.drawLine(x, y, x, y + CELL_SIZE);
 
-        // Main wall color
         g2d.setColor(new Color(120, 180, 255));
         g2d.setStroke(new BasicStroke(WALL_THICKNESS, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
@@ -624,123 +523,84 @@ class MazeVisualizer extends JPanel {
 
     private void drawMarkers(Graphics2D g2d) {
         drawMarker(g2d, MARGIN + CELL_SIZE/2, MARGIN + INFO_PANEL_HEIGHT + CELL_SIZE/2,
-                new Color(76, 175, 80), "START");
+                new Color(76, 175, 80), "S");
 
         List<Cell> finishCells = maze.getFinishCells();
-        Color[] finishColors = {PATH_COLOR_1, PATH_COLOR_2, PATH_COLOR_3};
+        Color[] colors = {PATH_COLOR_1, PATH_COLOR_2, PATH_COLOR_3};
 
         for (int i = 0; i < finishCells.size(); i++) {
             Cell finish = finishCells.get(i);
-            int endX = MARGIN + finish.col * CELL_SIZE + CELL_SIZE/2;
-            int endY = MARGIN + INFO_PANEL_HEIGHT + finish.row * CELL_SIZE + CELL_SIZE/2;
-            drawMarker(g2d, endX, endY, finishColors[i], "G" + (i + 1));
+            int x = MARGIN + finish.col * CELL_SIZE + CELL_SIZE/2;
+            int y = MARGIN + INFO_PANEL_HEIGHT + finish.row * CELL_SIZE + CELL_SIZE/2;
+            drawMarker(g2d, x, y, colors[i], "G" + (i + 1));
         }
     }
 
     private void drawInfoPanel(Graphics2D g2d) {
-        // Animated gradient background
         long time = System.currentTimeMillis();
-        float gradientShift = (float)((time / 50.0) % 100) / 100.0f;
+        float shift = (float)((time / 50.0) % 100) / 100.0f;
 
-        GradientPaint bgGradient = new GradientPaint(
-                gradientShift * getWidth(), 0, new Color(67, 97, 238),
-                getWidth() * (1 - gradientShift), INFO_PANEL_HEIGHT, new Color(103, 58, 183)
+        GradientPaint bg = new GradientPaint(
+                shift * getWidth(), 0, new Color(67, 97, 238),
+                getWidth() * (1 - shift), INFO_PANEL_HEIGHT, new Color(103, 58, 183)
         );
-        g2d.setPaint(bgGradient);
+        g2d.setPaint(bg);
         g2d.fillRoundRect(10, 10, getWidth() - 20, INFO_PANEL_HEIGHT - 20, 15, 15);
 
-        // Glowing border
         g2d.setColor(new Color(150, 150, 255, 100));
         g2d.setStroke(new BasicStroke(2));
         g2d.drawRoundRect(10, 10, getWidth() - 20, INFO_PANEL_HEIGHT - 20, 15, 15);
 
         g2d.setColor(Color.WHITE);
-
         if (!currentAlgorithm.isEmpty()) {
-            g2d.setFont(new Font("Segoe UI", Font.BOLD, 18));
-            // Add text shadow
-            g2d.setColor(new Color(0, 0, 0, 100));
-            g2d.drawString("Algorithm: " + currentAlgorithm, 31, 41);
-            g2d.setColor(Color.WHITE);
-            g2d.drawString("Algorithm: " + currentAlgorithm, 30, 40);
+            g2d.setFont(new Font("Segoe UI", Font.BOLD, 16));
+            g2d.drawString("Algorithm: " + currentAlgorithm, 25, 35);
         }
 
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        int yPos = 65;
-
-        if (explorationComplete && pathAnimationStep > 0) {
-            drawCostDisplay(g2d, PATH_COLOR_1, "G1: " + pathCosts[0], 30, yPos);
-            drawCostDisplay(g2d, PATH_COLOR_2, "G2: " + pathCosts[1], 120, yPos);
-            drawCostDisplay(g2d, PATH_COLOR_3, "G3: " + pathCosts[2], 210, yPos);
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        if (explorationComplete && !allGoalPaths.isEmpty()) {
+            for (int i = 0; i < allGoalPaths.size(); i++) {
+                int cost = 0;
+                for (Cell c : allGoalPaths.get(i)) cost += c.getCost();
+                Color pc = getPathColor(i);
+                g2d.setColor(pc.brighter());
+                g2d.drawString("G" + (i+1) + ": " + cost, 25 + i * 70, 60);
+            }
         } else if (!explorationComplete && explorationSteps != null) {
             g2d.setColor(new Color(129, 212, 250));
-            g2d.drawString("Exploring: " + currentStep + " cells", 30, yPos);
-        } else {
-            g2d.setColor(new Color(200, 200, 200));
-            g2d.drawString("Path Costs: ---", 30, yPos);
+            g2d.drawString("Exploring: " + currentStep, 25, 60);
         }
 
-        // Status indicator
         drawStatusIndicator(g2d);
     }
 
-    private void drawCostDisplay(Graphics2D g2d, Color color, String text, int x, int y) {
-        // Glowing background
-        g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), 60));
-        g2d.fillRoundRect(x - 5, y - 15, 80, 22, 8, 8);
-
-        // Text
-        g2d.setColor(color.brighter());
-        g2d.drawString(text, x, y);
-    }
-
     private void drawStatusIndicator(Graphics2D g2d) {
-        int x = getWidth() - 100;
-        int y = 25;
+        int x = getWidth() - 90;
+        int y = 20;
 
         if (explorationSteps != null) {
-            if (pathAnimationStep >= currentPathAnimation.size() && explorationComplete) {
-                // Complete - animated checkmark
+            if (isComplete()) {
                 g2d.setColor(new Color(76, 175, 80));
-                g2d.fillOval(x, y, 15, 15);
+                g2d.fillOval(x, y, 12, 12);
                 g2d.setColor(Color.WHITE);
-                g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                g2d.drawLine(x + 4, y + 8, x + 7, y + 11);
-                g2d.drawLine(x + 7, y + 11, x + 11, y + 5);
-
-                g2d.setColor(Color.WHITE);
-                g2d.setFont(new Font("Segoe UI", Font.BOLD, 12));
-                g2d.drawString("Complete", x + 20, y + 12);
+                g2d.setFont(new Font("Segoe UI", Font.BOLD, 10));
+                g2d.drawString("Done", x + 18, y + 10);
             } else if (explorationComplete) {
-                // Drawing paths - animated
-                long time = System.currentTimeMillis();
-                float pulse = (float)(Math.sin(time / 200.0) * 0.5 + 0.5);
-                g2d.setColor(new Color(255, 193, 7, (int)(150 + 105 * pulse)));
-                g2d.fillOval(x, y, 15, 15);
-
+                g2d.setColor(new Color(255, 193, 7));
+                g2d.fillOval(x, y, 12, 12);
                 g2d.setColor(Color.WHITE);
-                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                g2d.drawString("Drawing Paths", x + 20, y + 12);
+                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+                g2d.drawString("Paths", x + 18, y + 10);
             } else {
-                // Exploring - rotating spinner
                 long time = System.currentTimeMillis();
                 double angle = (time % 1000) / 1000.0 * Math.PI * 2;
-
                 g2d.setColor(new Color(255, 193, 7));
-                g2d.fillOval(x, y, 15, 15);
-
+                g2d.fillOval(x, y, 12, 12);
                 g2d.setColor(Color.WHITE);
                 g2d.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                int cx = x + 7;
-                int cy = y + 7;
-                int r = 5;
-                g2d.drawLine(cx, cy,
-                        cx + (int)(Math.cos(angle) * r),
-                        cy + (int)(Math.sin(angle) * r));
-
-                g2d.setColor(Color.WHITE);
-                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-                g2d.drawString("Exploring", x + 20, y + 12);
+                g2d.drawLine(x + 6, y + 6, x + 6 + (int)(Math.cos(angle) * 4), y + 6 + (int)(Math.sin(angle) * 4));
+                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+                g2d.drawString("Search", x + 18, y + 10);
             }
         }
     }
@@ -749,57 +609,36 @@ class MazeVisualizer extends JPanel {
         long time = System.currentTimeMillis();
         float pulse = (float)(Math.sin(time / 300.0) * 0.2 + 1.0);
 
-        // Outer glow rings
         for (int i = 5; i > 0; i--) {
-            int alpha = (int)(20 * i * pulse);
-            g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
+            g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(20 * i * pulse)));
             int size = 30 + i * 5;
             g2d.fillOval(x - size/2, y - size/2, size, size);
         }
 
-        // Main marker with animated gradient
-        int mainSize = (int)(32 * pulse);
-        float gradientAngle = (float)((time / 1000.0) % (Math.PI * 2));
-        int gx1 = x + (int)(Math.cos(gradientAngle) * mainSize / 2);
-        int gy1 = y + (int)(Math.sin(gradientAngle) * mainSize / 2);
-        int gx2 = x - (int)(Math.cos(gradientAngle) * mainSize / 2);
-        int gy2 = y - (int)(Math.sin(gradientAngle) * mainSize / 2);
-
+        int mainSize = (int)(28 * pulse);
         GradientPaint gradient = new GradientPaint(
-                gx1, gy1, color.brighter(),
-                gx2, gy2, color
+                x - mainSize/2, y - mainSize/2, color.brighter(),
+                x + mainSize/2, y + mainSize/2, color
         );
         g2d.setPaint(gradient);
         g2d.fillOval(x - mainSize/2, y - mainSize/2, mainSize, mainSize);
 
-        // Glowing border
         g2d.setColor(new Color(255, 255, 255, 200));
-        g2d.setStroke(new BasicStroke(3.0f));
+        g2d.setStroke(new BasicStroke(2.5f));
         g2d.drawOval(x - mainSize/2, y - mainSize/2, mainSize, mainSize);
 
-        // Inner sparkle
-        g2d.setColor(new Color(255, 255, 255, (int)(150 * pulse)));
-        g2d.fillOval(x - 3, y - 3, 6, 6);
-
-        // Label with shadow
-        g2d.setFont(new Font("Segoe UI", Font.BOLD, 10));
+        g2d.setFont(new Font("Segoe UI", Font.BOLD, 9));
         FontMetrics fm = g2d.getFontMetrics();
-        int labelWidth = fm.stringWidth(label);
-
+        int lw = fm.stringWidth(label);
         g2d.setColor(new Color(0, 0, 0, 150));
-        g2d.drawString(label, x - labelWidth/2 + 1, y + 5);
-
+        g2d.drawString(label, x - lw/2 + 1, y + 4);
         g2d.setColor(Color.WHITE);
-        g2d.drawString(label, x - labelWidth/2, y + 4);
+        g2d.drawString(label, x - lw/2, y + 3);
     }
 
-    // Particle class for visual effects
     private class Particle {
-        float x, y;
-        float vx, vy;
+        float x, y, vx, vy, life, size;
         Color color;
-        float life;
-        float size;
 
         Particle(float x, float y, double angle, double speed, Color color) {
             this.x = x;
@@ -814,9 +653,9 @@ class MazeVisualizer extends JPanel {
         void update() {
             x += vx;
             y += vy;
-            vy += 0.1f; // Gravity
+            vy += 0.1f;
             life -= 0.02f;
-            vx *= 0.98f; // Friction
+            vx *= 0.98f;
             vy *= 0.98f;
         }
 
@@ -826,25 +665,16 @@ class MazeVisualizer extends JPanel {
 
         void draw(Graphics2D g2d) {
             int alpha = (int)(life * 255);
-            g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
-
-            // Glow effect
-            int glowSize = (int)(size * 2);
             g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha / 3));
-            g2d.fillOval((int)x - glowSize/2, (int)y - glowSize/2, glowSize, glowSize);
-
-            // Main particle
+            g2d.fillOval((int)x - (int)size, (int)y - (int)size, (int)size * 2, (int)size * 2);
             g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
             g2d.fillOval((int)x - (int)size/2, (int)y - (int)size/2, (int)size, (int)size);
         }
     }
 
-    // NEW: Trail effect class
     private class TrailPoint {
-        float x, y;
+        float x, y, life, size;
         Color color;
-        float life;
-        float size;
 
         TrailPoint(float x, float y, Color color) {
             this.x = x;
@@ -856,7 +686,7 @@ class MazeVisualizer extends JPanel {
 
         void update() {
             life -= 0.015f;
-            size *= 1.02f; // Expand slowly
+            size *= 1.02f;
         }
 
         boolean isDead() {
