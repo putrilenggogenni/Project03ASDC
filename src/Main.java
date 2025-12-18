@@ -119,7 +119,7 @@ public class Main {
             legendPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 10));
             legendPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 15, 20));
 
-            JLabel legendTitle = new JLabel("Terrain Cost:");
+            JLabel legendTitle = new JLabel("⚡ Terrain Cost:");
             legendTitle.setForeground(new Color(255, 235, 59));
             legendTitle.setFont(new Font("Arial", Font.BOLD, 14));
             legendPanel.add(legendTitle);
