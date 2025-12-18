@@ -25,8 +25,10 @@ public class OpeningScreen extends JFrame {
         // Di constructor OpeningScreen setelah komponen dibuat
         SoundManager.getInstance().playOpeningMusic();
     }
-
-    private void startFadeInAnimation() {
+    public static void createGameWindow() {
+        System.out.println("createGameWindow CALLED");
+    }
+        private void startFadeInAnimation() {
         animationTimer = new Timer(30, e -> {
             if (titleAlpha < 1f) {
                 titleAlpha = Math.min(1f, titleAlpha + 0.02f);
@@ -61,28 +63,21 @@ public class OpeningScreen extends JFrame {
         }
 
         private void createButtons() {
+
+            // ===== START BUTTON =====
             startButton = new JButton("START ADVENTURE");
             styleButton(startButton, new Color(99, 102, 241), 300, 450);
+
             startButton.addActionListener(e -> {
+                startButton.setEnabled(false);
+
                 if (animationTimer != null) {
                     animationTimer.stop();
                 }
-                dispose();
-                Main.createGameWindow();
-            });
-            startButton.addActionListener(e -> {
-                // Play click sound
-                SoundManager.getInstance().playClick();
 
-                // Fade out opening music
+                SoundManager.getInstance().playClick();
                 SoundManager.getInstance().fadeOut(500);
 
-                // Stop animation
-                if (animationTimer != null) {
-                    animationTimer.stop();
-                }
-
-                // Delay untuk fade out, lalu main gameplay music
                 Timer transitionTimer = new Timer(600, event -> {
                     SoundManager.getInstance().playGameplayMusic();
                 });
@@ -93,22 +88,23 @@ public class OpeningScreen extends JFrame {
                 Main.createGameWindow();
             });
 
+            add(startButton);
+
+            // ===== EXIT BUTTON =====
             exitButton = new JButton("EXIT");
             styleButton(exitButton, new Color(239, 68, 68), 300, 520);
-            exitButton.addActionListener(e -> System.exit(0));
 
             exitButton.addActionListener(e -> {
+                exitButton.setEnabled(false);
+
                 SoundManager.getInstance().playClick();
                 SoundManager.getInstance().fadeOut(300);
 
-                Timer exitTimer = new Timer(400, event -> {
-                    System.exit(0);
-                });
+                Timer exitTimer = new Timer(400, event -> System.exit(0));
                 exitTimer.setRepeats(false);
                 exitTimer.start();
             });
 
-            add(startButton);
             add(exitButton);
         }
 
