@@ -29,6 +29,16 @@ class MazeVisualizer extends JPanel {
     private Map<Cell, Float> cellGlow = new HashMap<>();
     private long animationStartTime;
 
+    // NEW: Playback control
+    private boolean isPaused = false;
+
+    // NEW: Trail effects
+    private List<TrailPoint> trails = new ArrayList<>();
+
+    // NEW: Theme colors
+    private String currentTheme = "neon";
+    private Color themeColor1, themeColor2, themeColor3, themeBg;
+
     private static final Color PATH_COLOR_1 = new Color(255, 105, 180);
     private static final Color PATH_COLOR_2 = new Color(64, 156, 255);
     private static final Color PATH_COLOR_3 = new Color(46, 213, 115);
@@ -51,12 +61,106 @@ class MazeVisualizer extends JPanel {
         ));
         setBackground(new Color(20, 20, 35));
 
+        // Initialize theme
+        updateThemeColors();
+
         // Start particle animation timer
         particleTimer = new Timer(30, e -> {
             updateParticles();
+            updateTrails();
             repaint();
         });
         particleTimer.start();
+    }
+
+    // NEW: Theme system
+    public void setTheme(String theme) {
+        this.currentTheme = theme;
+        updateThemeColors();
+        repaint();
+    }
+
+    private void updateThemeColors() {
+        switch (currentTheme) {
+            case "ocean":
+                themeColor1 = new Color(14, 165, 233);
+                themeColor2 = new Color(34, 211, 238);
+                themeColor3 = new Color(6, 182, 212);
+                themeBg = new Color(15, 23, 42);
+                break;
+            case "forest":
+                themeColor1 = new Color(34, 197, 94);
+                themeColor2 = new Color(74, 222, 128);
+                themeColor3 = new Color(134, 239, 172);
+                themeBg = new Color(20, 30, 25);
+                break;
+            case "sunset":
+                themeColor1 = new Color(249, 115, 22);
+                themeColor2 = new Color(251, 146, 60);
+                themeColor3 = new Color(253, 186, 116);
+                themeBg = new Color(30, 20, 25);
+                break;
+            default: // neon
+                themeColor1 = new Color(147, 51, 234);
+                themeColor2 = new Color(168, 85, 247);
+                themeColor3 = new Color(192, 132, 252);
+                themeBg = new Color(20, 20, 35);
+                break;
+        }
+        setBackground(themeBg);
+    }
+
+    // NEW: Playback controls
+    public void pause() {
+        isPaused = true;
+        if (timer != null) {
+            timer.stop();
+        }
+    }
+
+    public void play() {
+        isPaused = false;
+        if (timer != null && !timer.isRunning() && currentStep < explorationSteps.size()) {
+            timer.start();
+        }
+    }
+
+    public void step() {
+        if (explorationSteps != null && currentStep < explorationSteps.size()) {
+            Cell cell = explorationSteps.get(currentStep);
+            cellGlow.put(cell, 1.0f);
+            addExplosionParticles(cell, new Color(103, 58, 183));
+            addTrail(cell);
+            currentStep++;
+            repaint();
+        }
+    }
+
+    // NEW: Stats getters
+    public boolean isAnimating() {
+        return explorationSteps != null && currentStep > 0;
+    }
+
+    public boolean isComplete() {
+        return explorationComplete && pathAnimationStep >= currentPathAnimation.size();
+    }
+
+    public int getCurrentStep() {
+        return currentStep;
+    }
+
+    public long getElapsedTime() {
+        if (explorationSteps == null) return 0;
+        return System.currentTimeMillis() - animationStartTime;
+    }
+
+    public int getBestPathCost() {
+        if (pathCosts.length == 0) return 0;
+        int min = Integer.MAX_VALUE;
+        for (int cost : pathCosts) {
+            if (cost > 0 && cost < min) min = cost;
+        }
+        return min == Integer.MAX_VALUE ? 0 : min;
     }
 
     public void setAnimationSpeed(int speed) {
@@ -94,14 +198,16 @@ class MazeVisualizer extends JPanel {
         }
 
         timer = new Timer(getDelayForSpeed(animationSpeed), e -> {
-            if (currentStep < explorationSteps.size()) {
+            if (!isPaused && currentStep < explorationSteps.size()) {
                 Cell cell = explorationSteps.get(currentStep);
                 cellGlow.put(cell, 1.0f);
                 // Add particles when exploring cells
-                addExplosionParticles(cell, new Color(103, 58, 183));
+                addExplosionParticles(cell, themeColor2);
+                // Add trail effect
+                addTrail(cell);
                 currentStep++;
                 repaint();
-            } else {
+            } else if (currentStep >= explorationSteps.size()) {
                 timer.stop();
                 explorationComplete = true;
                 reconstructAllPathsPostExploration();
@@ -230,6 +336,24 @@ class MazeVisualizer extends JPanel {
         }
     }
 
+    // NEW: Trail system
+    private void addTrail(Cell cell) {
+        int x = MARGIN + cell.col * CELL_SIZE + CELL_SIZE / 2;
+        int y = MARGIN + INFO_PANEL_HEIGHT + cell.row * CELL_SIZE + CELL_SIZE / 2;
+        trails.add(new TrailPoint(x, y, themeColor1));
+    }
+
+    private void updateTrails() {
+        Iterator<TrailPoint> iterator = trails.iterator();
+        while (iterator.hasNext()) {
+            TrailPoint trail = iterator.next();
+            trail.update();
+            if (trail.isDead()) {
+                iterator.remove();
+            }
+        }
+    }
+
     private void addCelebrationParticles(Cell cell) {
         int x = MARGIN + cell.col * CELL_SIZE + CELL_SIZE / 2;
         int y = MARGIN + INFO_PANEL_HEIGHT + cell.row * CELL_SIZE + CELL_SIZE / 2;
@@ -297,8 +421,15 @@ class MazeVisualizer extends JPanel {
 
         drawInfoPanel(g2d);
         drawMaze(g2d);
+        drawTrails(g2d);
         drawParticles(g2d);
         drawMarkers(g2d);
+    }
+
+    private void drawTrails(Graphics2D g2d) {
+        for (TrailPoint trail : trails) {
+            trail.draw(g2d);
+        }
     }
 
     private void drawMaze(Graphics2D g2d) {
@@ -705,6 +836,37 @@ class MazeVisualizer extends JPanel {
             // Main particle
             g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
             g2d.fillOval((int)x - (int)size/2, (int)y - (int)size/2, (int)size, (int)size);
+        }
+    }
+
+    // NEW: Trail effect class
+    private class TrailPoint {
+        float x, y;
+        Color color;
+        float life;
+        float size;
+
+        TrailPoint(float x, float y, Color color) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.life = 1.0f;
+            this.size = 15 + random.nextFloat() * 10;
+        }
+
+        void update() {
+            life -= 0.015f;
+            size *= 1.02f; // Expand slowly
+        }
+
+        boolean isDead() {
+            return life <= 0;
+        }
+
+        void draw(Graphics2D g2d) {
+            int alpha = (int)(life * 80);
+            g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha));
+            g2d.fillOval((int)(x - size/2), (int)(y - size/2), (int)size, (int)size);
         }
     }
 }
