@@ -4,7 +4,7 @@ class MazeGraph {
     private Cell[][] grid;
     private int rows, cols;
     private Random random;
-    private List<Cell> finishCells; // NEW: Multiple finish points
+    private List<Cell> finishCells;
 
     public MazeGraph(int rows, int cols) {
         this.rows = rows;
@@ -24,7 +24,6 @@ class MazeGraph {
     }
 
     public void generateMazeWithPrim() {
-        // Start from top-left corner
         Cell start = grid[0][0];
         start.visited = true;
 
@@ -32,60 +31,98 @@ class MazeGraph {
         addWallsToList(start, walls);
 
         while (!walls.isEmpty()) {
-            // Pick random wall
             int index = random.nextInt(walls.size());
             Wall wall = walls.remove(index);
 
             Cell cell1 = grid[wall.row1][wall.col1];
             Cell cell2 = grid[wall.row2][wall.col2];
 
-            // If only one cell is visited, remove wall
             if (cell1.visited != cell2.visited) {
                 removeWall(wall);
-
                 Cell unvisited = cell1.visited ? cell2 : cell1;
                 unvisited.visited = true;
                 addWallsToList(unvisited, walls);
             }
         }
 
-        // Create entrance and exit
         grid[0][0].topWall = false;
-        grid[rows-1][cols-1].bottomWall = false;
 
-        // NEW: Set up three finish points
-        setupFinishPoints();
+        // NEW: Dynamic random finish point placement
+        setupRandomFinishPoints();
 
-        // Assign random terrain types
         assignRandomTerrain();
-
-        // Reset visited for solving
         resetVisited();
     }
 
-    // NEW: Set up three finish points
-    private void setupFinishPoints() {
+    // NEW: Random finish point placement - always different locations
+    private void setupRandomFinishPoints() {
         finishCells.clear();
+        Set<String> usedPositions = new HashSet<>();
+        usedPositions.add("0,0"); // Reserve start position
 
-        // Finish point 1: bottom-right corner (original)
-        finishCells.add(grid[rows-1][cols-1]);
+        List<Cell> candidates = new ArrayList<>();
 
-        // Finish point 2: bottom-left corner
-        finishCells.add(grid[rows-1][0]);
-        grid[rows-1][0].bottomWall = false;
+        // Create candidate list - prefer edges and corners
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (i == 0 && j == 0) continue; // Skip start
 
-        // Finish point 3: middle-right edge
-        int midRow = rows / 2;
-        finishCells.add(grid[midRow][cols-1]);
-        grid[midRow][cols-1].rightWall = false;
+                // Prefer positions far from start and on edges
+                boolean isEdge = (i == 0 || i == rows-1 || j == 0 || j == cols-1);
+                int distFromStart = Math.abs(i) + Math.abs(j);
+
+                if (isEdge && distFromStart > Math.min(rows, cols) / 2) {
+                    candidates.add(grid[i][j]);
+                }
+            }
+        }
+
+        // Shuffle and select 3 distinct positions
+        Collections.shuffle(candidates, random);
+
+        int selected = 0;
+        for (Cell candidate : candidates) {
+            if (selected >= 3) break;
+
+            String pos = candidate.row + "," + candidate.col;
+            if (!usedPositions.contains(pos)) {
+                finishCells.add(candidate);
+                usedPositions.add(pos);
+
+                // Open wall for exit
+                if (candidate.row == 0) candidate.topWall = false;
+                else if (candidate.row == rows-1) candidate.bottomWall = false;
+                else if (candidate.col == 0) candidate.leftWall = false;
+                else if (candidate.col == cols-1) candidate.rightWall = false;
+
+                selected++;
+            }
+        }
+
+        // Fallback if not enough edge positions
+        while (finishCells.size() < 3) {
+            int r = random.nextInt(rows);
+            int c = random.nextInt(cols);
+            String pos = r + "," + c;
+
+            if (!usedPositions.contains(pos)) {
+                Cell cell = grid[r][c];
+                finishCells.add(cell);
+                usedPositions.add(pos);
+
+                // Open at least one wall
+                if (r == 0) cell.topWall = false;
+                else if (r == rows-1) cell.bottomWall = false;
+                else if (c == 0) cell.leftWall = false;
+                else if (c == cols-1) cell.rightWall = false;
+            }
+        }
     }
 
-    // NEW: Check if a cell is any finish point
     public boolean isFinishPoint(Cell cell) {
         return finishCells.contains(cell);
     }
 
-    // NEW: Get all finish points
     public List<Cell> getFinishCells() {
         return finishCells;
     }
@@ -93,7 +130,6 @@ class MazeGraph {
     private void assignRandomTerrain() {
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                // 40% default, 30% grass, 20% mud, 10% water
                 int rand = random.nextInt(100);
                 if (rand < 40) {
                     grid[i][j].terrain = Cell.TerrainType.DEFAULT;
@@ -106,7 +142,7 @@ class MazeGraph {
                 }
             }
         }
-        // Keep start and all finish points as default
+
         grid[0][0].terrain = Cell.TerrainType.DEFAULT;
         for (Cell finish : finishCells) {
             finish.terrain = Cell.TerrainType.DEFAULT;
