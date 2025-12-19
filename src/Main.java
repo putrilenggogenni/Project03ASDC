@@ -24,7 +24,8 @@ public class Main {
         button.setFont(new Font("Segoe UI", Font.BOLD, 12));
         button.setFocusPainted(false);
         button.setBorderPainted(false);
-        button.setPreferredSize(new Dimension(130, 40));
+        button.setPreferredSize(new Dimension(200, 40));
+        button.setMaximumSize(new Dimension(200, 40));
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
@@ -48,9 +49,10 @@ public class Main {
     private static JPanel createLegendItem(String text, Color color) {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         panel.setBackground(new Color(52, 73, 94));
+        panel.setMaximumSize(new Dimension(250, 35));
 
         JPanel colorBox = new JPanel();
-        colorBox.setPreferredSize(new Dimension(28, 28));
+        colorBox.setPreferredSize(new Dimension(24, 24));
         colorBox.setBackground(color);
         colorBox.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(255, 255, 255, 180), 2),
@@ -59,7 +61,7 @@ public class Main {
 
         JLabel label = new JLabel(text);
         label.setForeground(Color.WHITE);
-        label.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        label.setFont(new Font("Segoe UI", Font.BOLD, 11));
 
         panel.add(colorBox);
         panel.add(label);
@@ -97,25 +99,35 @@ public class Main {
         // Create visualizer
         final MazeVisualizer visualizer = new MazeVisualizer(maze);
 
-        // Stats panel for score system
-        JPanel statsPanel = new JPanel(new GridLayout(1, 4, 10, 0));
-        statsPanel.setBackground(new Color(52, 73, 94));
-        statsPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        // Create RIGHT SIDE CONTROL PANEL
+        JPanel rightPanel = new JPanel();
+        rightPanel.setLayout(new BoxLayout(rightPanel, BoxLayout.Y_AXIS));
+        rightPanel.setBackground(new Color(52, 73, 94));
+        rightPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        // Make mazeSize final for lambda
+        final int finalMazeSize = mazeSize;
+
+        // === SECTION 1: STATS PANEL ===
+        JPanel statsSection = createSection("📊 STATISTICS");
 
         final JLabel cellsExploredLabel = createStatLabel("Cells Explored: 0");
         final JLabel timeElapsedLabel = createStatLabel("Time: 0.0s");
         final JLabel efficiencyLabel = createStatLabel("Efficiency: 0%");
         final JLabel bestPathLabel = createStatLabel("Best Cost: ---");
 
-        statsPanel.add(cellsExploredLabel);
-        statsPanel.add(timeElapsedLabel);
-        statsPanel.add(efficiencyLabel);
-        statsPanel.add(bestPathLabel);
+        statsSection.add(cellsExploredLabel);
+        statsSection.add(Box.createVerticalStrut(8));
+        statsSection.add(timeElapsedLabel);
+        statsSection.add(Box.createVerticalStrut(8));
+        statsSection.add(efficiencyLabel);
+        statsSection.add(Box.createVerticalStrut(8));
+        statsSection.add(bestPathLabel);
 
-        // Make mazeSize final for lambda
-        final int finalMazeSize = mazeSize;
+        rightPanel.add(statsSection);
+        rightPanel.add(Box.createVerticalStrut(15));
 
-        // Add stats updater to visualizer
+        // Stats updater timer
         Timer statsTimer = new Timer(100, e -> {
             if (visualizer.isAnimating()) {
                 int explored = visualizer.getCurrentStep();
@@ -136,19 +148,13 @@ public class Main {
         });
         statsTimer.start();
 
-        // Create modern control panel
-        JPanel controlPanel = new JPanel();
-        controlPanel.setBackground(new Color(52, 73, 94));
-        controlPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 15));
-        controlPanel.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        // === SECTION 2: ALGORITHM SELECTION ===
+        JPanel algorithmSection = createSection("🧠 ALGORITHMS");
 
-        // Create styled buttons
         JButton bfsButton = createStyledButton("BFS", new Color(108, 92, 231));
         JButton dfsButton = createStyledButton("DFS", new Color(162, 155, 254));
         JButton dijkstraButton = createStyledButton("Dijkstra", new Color(46, 213, 115));
         JButton astarButton = createStyledButton("A* Algorithm", new Color(72, 219, 251));
-        JButton resetButton = createStyledButton("Reset", new Color(255, 152, 0));
-        JButton regenerateButton = createStyledButton("New Maze", new Color(255, 71, 87));
 
         bfsButton.addActionListener(e -> {
             BFSSolver solver = new BFSSolver(maze);
@@ -178,6 +184,111 @@ public class Main {
             }
         });
 
+        algorithmSection.add(bfsButton);
+        algorithmSection.add(Box.createVerticalStrut(10));
+        algorithmSection.add(dfsButton);
+        algorithmSection.add(Box.createVerticalStrut(10));
+        algorithmSection.add(dijkstraButton);
+        algorithmSection.add(Box.createVerticalStrut(10));
+        algorithmSection.add(astarButton);
+
+        rightPanel.add(algorithmSection);
+        rightPanel.add(Box.createVerticalStrut(15));
+
+        // === SECTION 3: PLAYBACK CONTROLS ===
+        JPanel playbackSection = createSection("⏯️ PLAYBACK");
+
+        JButton pauseButton = createStyledButton("⏸ Pause", new Color(255, 193, 7));
+        JButton playButton = createStyledButton("▶ Play", new Color(76, 175, 80));
+        JButton stepButton = createStyledButton("⏭ Step", new Color(3, 169, 244));
+
+        pauseButton.addActionListener(e -> visualizer.pause());
+        playButton.addActionListener(e -> visualizer.play());
+        stepButton.addActionListener(e -> visualizer.step());
+
+        playbackSection.add(pauseButton);
+        playbackSection.add(Box.createVerticalStrut(10));
+        playbackSection.add(playButton);
+        playbackSection.add(Box.createVerticalStrut(10));
+        playbackSection.add(stepButton);
+
+        rightPanel.add(playbackSection);
+        rightPanel.add(Box.createVerticalStrut(15));
+
+        // === SECTION 4: ANIMATION SPEED ===
+        JPanel speedSection = createSection("⚡ ANIMATION SPEED");
+
+        JLabel speedLabel = new JLabel("Speed:");
+        speedLabel.setForeground(Color.WHITE);
+        speedLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        speedLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JSlider speedSlider = new JSlider(JSlider.HORIZONTAL, 1, 10, 5);
+        speedSlider.setBackground(new Color(52, 73, 94));
+        speedSlider.setForeground(Color.WHITE);
+        speedSlider.setMajorTickSpacing(3);
+        speedSlider.setMinorTickSpacing(1);
+        speedSlider.setPaintTicks(true);
+        speedSlider.setPaintLabels(false);
+        speedSlider.setMaximumSize(new Dimension(200, 40));
+        speedSlider.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel speedValueLabel = new JLabel("Normal");
+        speedValueLabel.setForeground(new Color(129, 212, 250));
+        speedValueLabel.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        speedValueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        speedSlider.addChangeListener(e -> {
+            int value = speedSlider.getValue();
+            visualizer.setAnimationSpeed(value);
+            if (value <= 3) {
+                speedValueLabel.setText("Slow");
+            } else if (value <= 7) {
+                speedValueLabel.setText("Normal");
+            } else {
+                speedValueLabel.setText("Fast");
+            }
+        });
+
+        speedSection.add(speedLabel);
+        speedSection.add(Box.createVerticalStrut(8));
+        speedSection.add(speedSlider);
+        speedSection.add(Box.createVerticalStrut(8));
+        speedSection.add(speedValueLabel);
+
+        rightPanel.add(speedSection);
+        rightPanel.add(Box.createVerticalStrut(15));
+
+        // === SECTION 5: THEMES ===
+        JPanel themeSection = createSection("🎨 THEMES");
+
+        JButton neonTheme = createStyledButton("Neon", new Color(147, 51, 234));
+        JButton oceanTheme = createStyledButton("Ocean", new Color(14, 165, 233));
+        JButton forestTheme = createStyledButton("Forest", new Color(34, 197, 94));
+        JButton sunsetTheme = createStyledButton("Sunset", new Color(249, 115, 22));
+
+        neonTheme.addActionListener(e -> visualizer.setTheme("neon"));
+        oceanTheme.addActionListener(e -> visualizer.setTheme("ocean"));
+        forestTheme.addActionListener(e -> visualizer.setTheme("forest"));
+        sunsetTheme.addActionListener(e -> visualizer.setTheme("sunset"));
+
+        themeSection.add(neonTheme);
+        themeSection.add(Box.createVerticalStrut(10));
+        themeSection.add(oceanTheme);
+        themeSection.add(Box.createVerticalStrut(10));
+        themeSection.add(forestTheme);
+        themeSection.add(Box.createVerticalStrut(10));
+        themeSection.add(sunsetTheme);
+
+        rightPanel.add(themeSection);
+        rightPanel.add(Box.createVerticalStrut(15));
+
+        // === SECTION 6: MAZE ACTIONS ===
+        JPanel mazeSection = createSection("🎲 MAZE ACTIONS");
+
+        JButton resetButton = createStyledButton("Reset", new Color(255, 152, 0));
+        JButton regenerateButton = createStyledButton("New Maze", new Color(255, 71, 87));
+
         resetButton.addActionListener(e -> {
             visualizer.reset();
             cellsExploredLabel.setText("Cells Explored: 0");
@@ -195,192 +306,108 @@ public class Main {
             bestPathLabel.setText("Best Cost: ---");
         });
 
-        controlPanel.add(bfsButton);
-        controlPanel.add(dfsButton);
-        controlPanel.add(dijkstraButton);
-        controlPanel.add(astarButton);
-        controlPanel.add(resetButton);
-        controlPanel.add(regenerateButton);
+        mazeSection.add(resetButton);
+        mazeSection.add(Box.createVerticalStrut(10));
+        mazeSection.add(regenerateButton);
 
-        // Playback control panel (NEW!)
-        JPanel playbackPanel = new JPanel();
-        playbackPanel.setBackground(new Color(52, 73, 94));
-        playbackPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 5));
-        playbackPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
+        rightPanel.add(mazeSection);
+        rightPanel.add(Box.createVerticalStrut(15));
 
-        JButton pauseButton = createSmallButton("⏸ Pause", new Color(255, 193, 7));
-        JButton playButton = createSmallButton("▶ Play", new Color(76, 175, 80));
-        JButton stepButton = createSmallButton("⏭ Step", new Color(3, 169, 244));
+        // === SECTION 7: LEGEND ===
+        JPanel legendSection = createSection("⚡ TERRAIN COSTS");
 
-        pauseButton.addActionListener(e -> visualizer.pause());
-        playButton.addActionListener(e -> visualizer.play());
-        stepButton.addActionListener(e -> visualizer.step());
+        legendSection.add(createLegendItem("Default (0)", Cell.TerrainType.DEFAULT.color));
+        legendSection.add(Box.createVerticalStrut(8));
+        legendSection.add(createLegendItem("Grass (1)", Cell.TerrainType.GRASS.color));
+        legendSection.add(Box.createVerticalStrut(8));
+        legendSection.add(createLegendItem("Mud (5)", Cell.TerrainType.MUD.color));
+        legendSection.add(Box.createVerticalStrut(8));
+        legendSection.add(createLegendItem("Water (10)", Cell.TerrainType.WATER.color));
 
-        playbackPanel.add(pauseButton);
-        playbackPanel.add(playButton);
-        playbackPanel.add(stepButton);
+        rightPanel.add(legendSection);
+        rightPanel.add(Box.createVerticalStrut(15));
 
-        // Speed control panel
-        JPanel speedPanel = new JPanel();
-        speedPanel.setBackground(new Color(52, 73, 94));
-        speedPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 10));
-        speedPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
+        // === SECTION 8: INFO ===
+        JPanel infoSection = createSection("💡 INFO");
 
-        JLabel speedLabel = new JLabel("⚡ Animation Speed:");
-        speedLabel.setForeground(new Color(255, 235, 59));
-        speedLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JTextArea infoText = new JTextArea(
+                "• Dijkstra & A* minimize path cost\n" +
+                        "• BFS & DFS explore systematically\n" +
+                        "• Reach any G1/G2/G3 to win!\n" +
+                        "• Adjust speed for better viewing"
+        );
+        infoText.setEditable(false);
+        infoText.setBackground(new Color(52, 73, 94));
+        infoText.setForeground(new Color(200, 200, 200));
+        infoText.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        infoText.setLineWrap(true);
+        infoText.setWrapStyleWord(true);
+        infoText.setAlignmentX(Component.LEFT_ALIGNMENT);
+        infoText.setMaximumSize(new Dimension(250, 100));
 
-        JSlider speedSlider = new JSlider(JSlider.HORIZONTAL, 1, 10, 5);
-        speedSlider.setBackground(new Color(52, 73, 94));
-        speedSlider.setForeground(Color.WHITE);
-        speedSlider.setMajorTickSpacing(3);
-        speedSlider.setMinorTickSpacing(1);
-        speedSlider.setPaintTicks(true);
-        speedSlider.setPaintLabels(false);
-        speedSlider.setPreferredSize(new Dimension(200, 40));
+        infoSection.add(infoText);
 
-        JLabel speedValueLabel = new JLabel("Normal");
-        speedValueLabel.setForeground(Color.WHITE);
-        speedValueLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        speedValueLabel.setPreferredSize(new Dimension(60, 20));
+        rightPanel.add(infoSection);
+        rightPanel.add(Box.createVerticalGlue());
 
-        speedSlider.addChangeListener(e -> {
-            int value = speedSlider.getValue();
-            visualizer.setAnimationSpeed(value);
-            if (value <= 3) {
-                speedValueLabel.setText("Slow");
-            } else if (value <= 7) {
-                speedValueLabel.setText("Normal");
-            } else {
-                speedValueLabel.setText("Fast");
-            }
-        });
+        // Wrap right panel in scroll pane
+        JScrollPane rightScrollPane = new JScrollPane(rightPanel);
+        rightScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        rightScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        rightScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        rightScrollPane.setBorder(BorderFactory.createEmptyBorder());
+        rightScrollPane.setPreferredSize(new Dimension(280, 600));
 
-        speedPanel.add(speedLabel);
-        speedPanel.add(speedSlider);
-        speedPanel.add(speedValueLabel);
+        // Wrap visualizer in scroll pane (for large mazes)
+        JScrollPane mazeScrollPane = new JScrollPane(visualizer);
+        mazeScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        mazeScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        mazeScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        mazeScrollPane.getHorizontalScrollBar().setUnitIncrement(16);
 
-        // Theme selector (NEW!)
-        JPanel themePanel = new JPanel();
-        themePanel.setBackground(new Color(52, 73, 94));
-        themePanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 5));
-        themePanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
-
-        JLabel themeLabel = new JLabel("🎨 Theme:");
-        themeLabel.setForeground(new Color(255, 235, 59));
-        themeLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
-
-        JButton neonTheme = createSmallButton("Neon", new Color(147, 51, 234));
-        JButton oceanTheme = createSmallButton("Ocean", new Color(14, 165, 233));
-        JButton forestTheme = createSmallButton("Forest", new Color(34, 197, 94));
-        JButton sunsetTheme = createSmallButton("Sunset", new Color(249, 115, 22));
-
-        neonTheme.addActionListener(e -> visualizer.setTheme("neon"));
-        oceanTheme.addActionListener(e -> visualizer.setTheme("ocean"));
-        forestTheme.addActionListener(e -> visualizer.setTheme("forest"));
-        sunsetTheme.addActionListener(e -> visualizer.setTheme("sunset"));
-
-        themePanel.add(themeLabel);
-        themePanel.add(neonTheme);
-        themePanel.add(oceanTheme);
-        themePanel.add(forestTheme);
-        themePanel.add(sunsetTheme);
-
-        // Create elegant legend panel
-        JPanel legendPanel = new JPanel();
-        legendPanel.setBackground(new Color(52, 73, 94));
-        legendPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 10));
-        legendPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 15, 20));
-
-        JLabel legendTitle = new JLabel("⚡ Terrain Cost:");
-        legendTitle.setForeground(new Color(255, 235, 59));
-        legendTitle.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        legendPanel.add(legendTitle);
-
-        legendPanel.add(createLegendItem("Default (0)", Cell.TerrainType.DEFAULT.color));
-        legendPanel.add(createLegendItem("Grass (1)", Cell.TerrainType.GRASS.color));
-        legendPanel.add(createLegendItem("Mud (5)", Cell.TerrainType.MUD.color));
-        legendPanel.add(createLegendItem("Water (10)", Cell.TerrainType.WATER.color));
-
-        // Add algorithm info panel
-        JPanel infoPanel = new JPanel();
-        infoPanel.setBackground(new Color(52, 73, 94));
-        infoPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 15, 8));
-        infoPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 10, 20));
-
-        JLabel infoLabel = new JLabel("<html><center>💡 <b>Tip:</b> Dijkstra & A* minimize path cost | 🎯 Reach any of the 3 finish points to win!</center></html>");
-        infoLabel.setForeground(new Color(200, 200, 200));
-        infoLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        infoPanel.add(infoLabel);
-
-        JPanel southPanel = new JPanel(new BorderLayout());
-        southPanel.add(statsPanel, BorderLayout.NORTH);
-
-        JPanel controlsContainer = new JPanel(new BorderLayout());
-        controlsContainer.add(controlPanel, BorderLayout.NORTH);
-        controlsContainer.add(playbackPanel, BorderLayout.CENTER);
-
-        JPanel speedThemeContainer = new JPanel(new BorderLayout());
-        speedThemeContainer.add(speedPanel, BorderLayout.NORTH);
-        speedThemeContainer.add(themePanel, BorderLayout.CENTER);
-
-        southPanel.add(controlsContainer, BorderLayout.CENTER);
-        southPanel.add(speedThemeContainer, BorderLayout.SOUTH);
-
-        JPanel bottomPanel = new JPanel(new BorderLayout());
-        bottomPanel.add(southPanel, BorderLayout.NORTH);
-        bottomPanel.add(legendPanel, BorderLayout.CENTER);
-        bottomPanel.add(infoPanel, BorderLayout.SOUTH);
-
-        // Wrap visualizer in scroll pane to handle overflow
-        JScrollPane scrollPane = new JScrollPane(visualizer);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.getHorizontalScrollBar().setUnitIncrement(16);
-
+        // Main layout: maze on left, controls on right
         frame.setLayout(new BorderLayout());
-        frame.add(scrollPane, BorderLayout.CENTER);
-        frame.add(bottomPanel, BorderLayout.SOUTH);
+        frame.add(mazeScrollPane, BorderLayout.CENTER);
+        frame.add(rightScrollPane, BorderLayout.EAST);
 
         frame.pack();
-        // Ensure window isn't too large for screen
+
+        // Ensure window fits screen
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        int maxWidth = Math.min(frame.getWidth(), (int)(screenSize.width * 0.9));
-        int maxHeight = Math.min(frame.getHeight(), (int)(screenSize.height * 0.9));
+        int maxWidth = Math.min(frame.getWidth(), (int)(screenSize.width * 0.95));
+        int maxHeight = Math.min(frame.getHeight(), (int)(screenSize.height * 0.95));
         frame.setSize(maxWidth, maxHeight);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
 
+    private static JPanel createSection(String title) {
+        JPanel section = new JPanel();
+        section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
+        section.setBackground(new Color(44, 62, 80));
+        section.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(99, 102, 241, 100), 1),
+                BorderFactory.createEmptyBorder(12, 12, 12, 12)
+        ));
+        section.setAlignmentX(Component.LEFT_ALIGNMENT);
+        section.setMaximumSize(new Dimension(280, Integer.MAX_VALUE));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setForeground(new Color(255, 235, 59));
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        section.add(titleLabel);
+        section.add(Box.createVerticalStrut(12));
+
+        return section;
+    }
+
     private static JLabel createStatLabel(String text) {
         JLabel label = new JLabel(text);
         label.setForeground(new Color(129, 212, 250));
-        label.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        label.setHorizontalAlignment(SwingConstants.CENTER);
+        label.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
         return label;
-    }
-
-    private static JButton createSmallButton(String text, Color color) {
-        JButton button = new JButton(text);
-        button.setBackground(color);
-        button.setForeground(Color.WHITE);
-        button.setFont(new Font("Segoe UI", Font.BOLD, 10));
-        button.setFocusPainted(false);
-        button.setBorderPainted(false);
-        button.setPreferredSize(new Dimension(90, 30));
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        button.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-
-        button.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(color.brighter());
-            }
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(color);
-            }
-        });
-
-        return button;
     }
 }
